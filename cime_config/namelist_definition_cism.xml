@@ -2832,6 +2832,21 @@ Sub-elements of each entry include:
     </desc>
   </entry>
  
+    <entry id="use_ec_update">
+    <type>integer</type>
+    <category>cism_config_ho_options</category>
+    <group>ho_options</group>
+    <values>
+      <value icesheet="gris">1</value>
+      <value icesheet="ais" >1</value>
+    </values>
+    <desc> Flag that indicates whether or not update SMB for EC changes in
+      fully coupled or T-compset mode. 0=no EC, 1=use EC,
+      Default: 1 for Greenland, 1 for Antarctica
+    </desc>
+  </entry>
+
+
   <!-- =============================================================  -->
   <!-- group: cism.icesheet.config: GTHF (geothermal heat flux)       -->
   <!-- =============================================================  -->
