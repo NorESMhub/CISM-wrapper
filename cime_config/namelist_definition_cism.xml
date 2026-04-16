@@ -2206,7 +2206,7 @@ Sub-elements of each entry include:
       <value>0.0</value>
     </values>
     <desc>
-      Min value of thermal_forcing_basin (deg C) applied to nonlocal and 
+      Min value of thermal_forcing_basin (deg C) applied to nonlocal and
       nonlocal-slope schemes
       Default: 0.0
     </desc>
@@ -2934,6 +2934,20 @@ Sub-elements of each entry include:
     <desc>
       Flag that indicates whether peripheral ice caps are removed and added to an ice loss flux
       Default: true
+    </desc>
+  </entry>
+
+    <entry id="reproducible_sums">
+    <type>logical</type>
+    <category>cism_config_ho_options</category>
+    <group>ho_options</group>
+    <values>
+      <value>.true.</value>
+    </values>
+    <desc>
+      Flag that changes the solver to use code to produce b4b the same solution regardless of
+      the number of cores or PE layout.
+      Default: true (only for CESM, false in standalone)
     </desc>
   </entry>
 
