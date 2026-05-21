@@ -71,20 +71,6 @@
     </machines>
   </test>
 
-  <!-- Remove mct tests as they are no longer supported -->
-  <!--test name="ERS_Vmct_D_Ly3" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/noevolve">
-    <machines>
-
-      <machine name="derecho" compiler="intel" category="aux_glc">
-        <options>
-          <option name="wallclock">0:30</option>
-          <option name="comment">ice evolution off is the typical operation of cism within cesm, so test that configuration</option>
-        </options>
-      </machine>
-
-    </machines>
-  </test-->
-
   <!-- BUG(wjs, 2021-09-29, ESCOMP/CISM-wrapper#60) This currently fails
        at namelist generation time, with "ERROR: for TG compset require
        that lnd_cpl_time equal glc_cpl_time". If I remember correctly,
@@ -291,6 +277,35 @@
     </machines>
   </test>
 
+<test name="ERP_Ly4" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/norenormal">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_glc">
+        <options>
+          <option name="wallclock">0:20:00</option>
+          <!-- Adding ERP tests to check for exact restarts with changing processors. As of 05/2026, there
+	       are global sums in cmeps that prevent this from passing. This is why we turn off renormalization
+	  -->
+          <option name="comment">Test for exact b4b restart with changing processor counts</option>
+        </options>
+      </machine>
+    </machines>
+</test>
+
+<test name="ERP_Ly5" grid="f09_g17_ais8" compset="T1850Ga" testmods="cism/norenormal">
+    <machines>
+      <machine name="derecho" compiler="gnu" category="aux_glc">
+        <options>
+          <option name="wallclock">0:20:00</option>
+          <!-- Adding ERP tests to check for exact restarts with changing processors. As of 05/2026, there
+	       are global sums in cmeps that prevent this from passing. This is why we turn off renormalization
+	  -->
+          <option name="comment">Test for exact b4b restart with changing processor counts</option>
+        </options>
+      </machine>
+    </machines>
+  </test>
+
+  
   <test name="NCK_Ly3" grid="f09_g17_gris20" compset="T1850Gg">
     <machines>
 
