@@ -993,7 +993,7 @@ Sub-elements of each entry include:
   <entry id="frontal_melt_factor">
     <type>real</type>
     <category>cism_config_options</category>
-    <group>options</group>
+    <group>parameters</group>
     <values>
       <value icesheet="gris">1.0</value>
       <value icesheet="ais" >1.0</value>
