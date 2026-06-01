@@ -1,16 +1,15 @@
 <?xml version="1.0"?>
 <testlist version="2.0">
 
-  <!-- <test name="ERI_Ly44" grid="f09_g17_gris20" compset="T1850Gg" testmods="cism/isostasy_period4"> -->
-  <!--   <machines> -->
-  <!--     <machine name="betzy" compiler="intel" category="aux_cism_noresm"> -->
-  <!--       <options> -->
-  <!--         <option name="wallclock">0:40</option> -->
-  <!--         <option name="comment">include a longer ERI test to catch problems that may just show up after longer runs, using a coarse resolution to get faster turnaround and lower cost; include isostasy because there are extra subtleties with getting isostasy to restart exactly</option> -->
-  <!--       </options> -->
-  <!--     </machine> -->
-  <!--   </machines> -->
-  <!-- </test> -->
+  <test name="ERI_Ly44" grid="f09_g17_gris20" compset="T1850Gg" testmods="cism/isostasy_period4">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_glc"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:40</option>
+      <option name="comment">include a longer ERI test to catch problems that may just show up after longer runs, using a coarse resolution to get faster turnaround and lower cost; include isostasy because there are extra subtleties with getting isostasy to restart exactly</option>
+    </options>
+  </test>
 
   <test name="ERI_Ly15" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/isostasy_period4">
     <machines>
@@ -36,25 +35,24 @@
     </options>
   </test>
 
-  <!-- <test name="ERS_Ly11" grid="f09_g17_gris20" compset="T1850Gg"> -->
-  <!--   <machines> -->
-  <!--     <machine name="betzy" compiler="intel" category="aux_cism_noresm"/> -->
-  <!--     <machine name="olivia" compiler="intel" category="aux_cism_noresm"/> -->
-  <!--   </machines> -->
-  <!--   <options> -->
-  <!--     <option name="wallclock">0:20</option> -->
-  <!--   </options> -->
-  <!-- </test> -->
+  <test name="ERS_Ly11" grid="f09_g17_gris20" compset="T1850Gg">
+    <machines>
+      <machine name="derecho" compiler="gnu" category="aux_glc"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:20</option>
+    </options>
+  </test>
 
-  <!-- <test name="ERS_Ly11" grid="f09_g17_gris20" compset="T1850Gg" testmods="cism/oneway"> -->
-  <!--   <machines> -->
-  <!--     <machine name="betzy" compiler="intel" category="aux_cism_noresm"/> -->
-  <!--   </machines> -->
-  <!--   <options> -->
-  <!--     <option name="wallclock">0:20</option> -->
-  <!--     <option name="comment">(3-3-16) identical to an existing non-oneway test, which generates some non-zero runoff fluxes</option> -->
-  <!--   </options> -->
-  <!-- </test> -->
+  <test name="ERS_Ly11" grid="f09_g17_gris20" compset="T1850Gg" testmods="cism/oneway">
+    <machines>
+      <machine name="derecho" compiler="gnu" category="aux_glc"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:20</option>
+      <option name="comment">(3-3-16) identical to an existing non-oneway test, which generates some non-zero runoff fluxes</option>
+    </options>
+  </test>
 
   <!-- BUG(wjs, 2021-09-29, ESCOMP/CISM-wrapper#60) This currently fails
        at namelist generation time, with "ERROR: for TG compset require
@@ -201,6 +199,44 @@
   </test>
 
   <test name="SMS_D_Ld5" grid="f19_f19_ais8gris4_mtn14" compset="I1850Clm50SpGag" testmods="cism/test_coupling">
+    <machines>
+      <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:30:00</option>
+      <option name="comment">Include a short debug I compset test with both Antarctica and Greenland (basically duplicates a test on izumi, so we don't need to do baseline comparisons on izumi)</option>
+    </options>
+  </test>
+
+<test name="ERP_Ly4" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/norenormal">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_glc"/>
+      <machine name="olivia" compiler="intel" category="aux_glc_noresm"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:20:00</option>
+      <!-- Adding ERP tests to check for exact restarts with changing processors. As of 05/2026, there
+	   are global sums in cmeps that prevent this from passing. This is why we turn off renormalization
+      -->
+      <option name="comment">Test for exact b4b restart with changing processor counts</option>
+    </options>
+</test>
+
+<test name="ERP_Ly5" grid="f09_g17_ais8" compset="T1850Ga" testmods="cism/norenormal">
+    <machines>
+      <machine name="derecho" compiler="gnu" category="aux_glc"/>
+      <machine name="olivia" compiler="intel" category="aux_glc_noresm"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:20:00</option>
+      <!-- Adding ERP tests to check for exact restarts with changing processors. As of 05/2026, there
+	   are global sums in cmeps that prevent this from passing. This is why we turn off renormalization
+      -->
+      <option name="comment">Test for exact b4b restart with changing processor counts</option>
+    </options>
+  </test>
+  
+  <test name="NCK_Ly3" grid="f09_g17_gris20" compset="T1850Gg">
     <machines>
       <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
     </machines>
@@ -376,30 +412,30 @@
   </test>
 
   <!-- aux_cime_baselines category
+
        For the sake of making sure cime hasn't inadvertently changed
        answers, make sure we cover a T compset (to test dlnd) and an I
        compset with test_coupling (to test both directions of two-way
        coupling); note that the test_coupling test also tests multiple
-       ice sheets.  -->
+       ice sheets.
+  -->
 
-  <!-- <test name="SMS_Ly2" grid="f09_g17_gris20" compset="T1850Gg"> -->
-  <!--   <machines> -->
-  <!--     <machine name="betzy" compiler="intel" category="aux_cime_baselines"/> -->
-  <!--     <machine name="olivia" compiler="intel" category="aux_cime_baselines"/> -->
-  <!--   </machines> -->
-  <!--   <options> -->
-  <!--     <option name="wallclock">0:30:00</option> -->
-  <!--   </options> -->
-  <!-- </test> -->
+  <test name="SMS_Ly2" grid="f09_g17_gris20" compset="T1850Gg">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:30:00</option>
+    </options>
+  </test>
 
-  <!-- <test name="SMS_Ld5" grid="f19_f19_ais8gris4_mtn14" compset="I1850Clm50SpGag" testmods="cism/test_coupling"> -->
-  <!--   <machines> -->
-  <!--     <machine name="betzy" compiler="intel" category="aux_cime_baselines"/> -->
-  <!--     <machine name="olivia" compiler="intel" category="aux_cime_baselines"/> -->
-  <!--   </machines> -->
-  <!--   <options> -->
-  <!--     <option name="wallclock">0:30:00</option> -->
-  <!--   </options> -->
-  <!-- </test> -->
+  <test name="SMS_Ld5" grid="f10_f10_ais8gris4_mg37" compset="I1850Clm50SpGag" testmods="cism/test_coupling">
+    <machines>
+      <machine name="derecho" compiler="intel" category="aux_cime_baselines"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:30:00</option>
+    </options>
+  </test>
 
 </testlist>
