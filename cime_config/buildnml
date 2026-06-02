@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # values of certain config file parameters
 #----------------------------------------------------
 # namelist groups in the cism_in file
-_CISM_IN_GROUPS = ["cism_params", "time_manager_nml", "glc_override_nml"]
+_CISM_IN_GROUPS = ["cism_params", "time_manager_nml", "glc_override_nml", "cism_hybrid.nml"]
 
 # namelist groups in the cism.icesheet.config file
 _CISM_CONFIG_GROUPS = ["grid", "glad_climate", "esm_output", "options", "sigma", "time", "parameters",
@@ -381,6 +381,10 @@ def _create_cism_in(case, confdir, inst_string, icesheet_names, infile, nmlgen, 
     nmlgen.add_default("paramfile_base", value="cism"+inst_string, ignore_abs_path=True)
     nmlgen.add_default("num_icesheets", value=len(icesheet_names))
     nmlgen.add_default("icesheet_names", value=icesheet_names)
+    # cism_hybrid_nml: default every ice sheet to 'prognostic'; users override
+    # individual entries via user_nl_cism to make ice sheets 'noevolve'.
+    nmlgen.add_default("icesheet_modes",
+                       value=["prognostic"] * len(icesheet_names))
 
     _set_startdate(nmlgen, case,
                    run_type=run_type)

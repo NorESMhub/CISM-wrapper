@@ -62,7 +62,7 @@
 ! !IROUTINE: glc_initialize
 ! !INTERFACE:
 
- subroutine glc_initialize(EClock)
+ subroutine glc_initialize(EClock, icesheet_modes_in)
 
 ! !DESCRIPTION:
 !  This routine is the initialization driver that initializes a glc run
@@ -94,6 +94,11 @@
 ! !INPUT/OUTPUT PARAMETERS:
 
    type(ESMF_Clock),     intent(in)    :: EClock
+   ! Per-NUOPC-ice-sheet mode array ('prognostic' or 'noevolve'); if absent or
+   ! all entries are 'prognostic', all ice sheets listed in cism_params are run
+   ! by CISM. Entries marked 'noevolve' are filtered out of num_icesheets and
+   ! icesheet_names so that only the prognostic subset is initialized here.
+   character(len=*), optional, intent(in) :: icesheet_modes_in(:)
 
 !EOP
 !BOC
@@ -157,6 +162,10 @@
   integer :: nml_in    ! namelist file unit number
 
   integer :: climate_tstep  ! climate time step (hours)
+
+  ! Used to filter num_icesheets / icesheet_names by icesheet_modes_in
+  integer :: n_prog, k
+  character(icesheet_name_len) :: tmp_names(max_icesheets)
 
   integer :: yr, mon, day, tod
   integer, parameter :: days_in_year = 365
@@ -241,6 +250,28 @@
    call broadcast_scalar(test_coupling,     master_task)
    call broadcast_scalar(enable_frac_overrides, master_task)
    call set_routing(ice_flux_routing)
+
+   ! If icesheet_modes_in is provided, filter num_icesheets and icesheet_names
+   ! down to only the 'prognostic' subset.  CISM internals (this module and
+   ! everything that uses glc_constants:num_icesheets / icesheet_names) only
+   ! ever see the prognostic ice sheets; noevolve entries are handled by the
+   ! NUOPC cap via glc_noevolve_mod.
+   if (present(icesheet_modes_in)) then
+      n_prog = 0
+      tmp_names(:) = 'UNSET'
+      do k = 1, num_icesheets
+         if (trim(icesheet_modes_in(k)) == 'prognostic') then
+            n_prog = n_prog + 1
+            tmp_names(n_prog) = icesheet_names(k)
+         end if
+      end do
+      num_icesheets = n_prog
+      icesheet_names(:) = tmp_names(:)
+      if (my_task == master_task) then
+         write(stdout,*) 'After filtering by icesheet_modes_in: num_icesheets = ', num_icesheets
+         write(stdout,*) 'Prognostic icesheet_names: ', icesheet_names(1:num_icesheets)
+      end if
+   end if
 
    if (my_task == master_task) then
       write(stdout,*) 'test_coupling:   ', test_coupling

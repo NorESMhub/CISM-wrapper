@@ -414,8 +414,9 @@ contains
        call shr_sys_abort( subname//'ERROR:: bad calendar for ESMF' )
     end if
 
-    ! Initialize GLC
-    call glc_initialize(clock)
+    ! Initialize GLC — pass icesheet_modes so CISM only initializes the
+    ! 'prognostic' subset; 'noevolve' entries are handled later by glc_noevolve_mod
+    call glc_initialize(clock, icesheet_modes_in=icesheet_modes(1:get_num_icesheets_total()))
     if (my_task == master_task) then
        write(stdout,F01) ' GLC Initial Date ',iyear,imonth,iday,ihour,iminute,isecond
        write(stdout,F00) ' Initialize Done'
@@ -429,17 +430,19 @@ contains
 
     ! Consistency checks
 
-    ! num_icesheets is the number of *prognostic* ice sheets (from cism_params namelist)
-    ! num_icesheets_total_local is the total number of ice sheets (prognostic + noevolve)
+    ! After glc_initialize filtered by icesheet_modes:
+    !   - num_icesheets (glc_constants) = number of *prognostic* ice sheets
+    !   - num_icesheets_total_local     = total number of ice sheets in this run
+    !                                     (prognostic + noevolve)
     num_icesheets_from_mediator = get_num_icesheets_total()
     num_icesheets_total_local   = num_icesheets_from_mediator
 
-    ! Sanity check: the number of prognostic ice sheets known to CISM internally must
-    ! match the number of 'prognostic' entries seen by the cap.
+    ! Sanity check: prognostic count from cap mapping must equal prognostic
+    ! count CISM ended up with after filtering.
     if (get_num_icesheets() /= num_icesheets) then
-       write(stdout,*) 'num_icesheets from cap mapping: ', get_num_icesheets()
-       write(stdout,*) 'num_icesheets from cism namelist: ', num_icesheets
-       call shr_sys_abort('num prognostic ice sheets in cap mapping differs from cism namelist')
+       write(stdout,*) 'num prognostic from cap mapping:    ', get_num_icesheets()
+       write(stdout,*) 'num prognostic after CISM filter:   ', num_icesheets
+       call shr_sys_abort('num prognostic ice sheets in cap mapping differs from CISM filter result')
     end if
 
     ! Allocate and read in mesh array — one entry per ice sheet (prognostic + noevolve)
