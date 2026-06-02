@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # values of certain config file parameters
 #----------------------------------------------------
 # namelist groups in the cism_in file
-_CISM_IN_GROUPS = ["cism_params", "time_manager_nml", "glc_override_nml", "cism_hybrid.nml"]
+_CISM_IN_GROUPS = ["cism_params", "time_manager_nml", "glc_override_nml", "cism_hybrid_nml"]
 
 # namelist groups in the cism.icesheet.config file
 _CISM_CONFIG_GROUPS = ["grid", "glad_climate", "esm_output", "options", "sigma", "time", "parameters",
