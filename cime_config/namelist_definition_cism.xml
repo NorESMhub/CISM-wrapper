@@ -175,6 +175,93 @@ Sub-elements of each entry include:
   </entry>
 
   <!-- =============================================================  -->
+  <!-- group: cism_hybrid_nml                                         -->
+  <!-- =============================================================  -->
+  <!-- Hybrid configuration: per-ice-sheet mode selection.            -->
+  <!-- Some ice sheets can be run prognostically (CISM dycore), and   -->
+  <!-- others as 'noevolve' (static data read from a file, with ice   -->
+  <!-- runoff diagnosed from the imported surface mass balance).      -->
+  <!--                                                                -->
+  <!-- All arrays are indexed by ice-sheet number 1..N, matching the  -->
+  <!-- order of mesh files in the mediator's mesh_glc attribute.      -->
+  <!-- cism_params:icesheet_names lists only the prognostic subset,   -->
+  <!-- in the same relative order.                                    -->
+  <!--                                                                -->
+  <!-- If this group is omitted, all ice sheets default to            -->
+  <!-- 'prognostic' and the cap behaves as before.                    -->
+  <!-- =============================================================  -->
+
+  <entry id="icesheet_modes">
+    <type>char(10)</type>
+    <category>cism</category>
+    <group>cism_hybrid_nml</group>
+    <valid_values>prognostic,noevolve</valid_values>
+    <values>
+      <value>prognostic</value>
+    </values>
+    <desc>
+      Per ice sheet, selects the operating mode:
+      'prognostic' = run the CISM dycore for this ice sheet
+      'noevolve'   = read static topography/thickness from a file and
+                     diagnose ice runoff (Fgrg_rofi) from the imported
+                     surface mass balance; all other CISM-specific
+                     export fields (Flgg_hflx, Figg_rofi, Fgrg_rofl,
+                     Flrr_flood, Flrr_volr, Flrr_volrmch) are zero-filled.
+      The count of 'prognostic' entries must equal cism_params:num_icesheets,
+      and cism_params:icesheet_names must list only the prognostic ice
+      sheets in the same relative order.
+      Default: all ice sheets are 'prognostic'.
+    </desc>
+  </entry>
+
+  <entry id="noevolve_datafiles">
+    <type>char(10)</type>
+    <category>cism</category>
+    <group>cism_hybrid_nml</group>
+    <input_pathname>abs</input_pathname>
+    <values>
+      <value>UNSET</value>
+    </values>
+    <desc>
+      Per ice sheet, full path to the static NetCDF file containing the
+      bedrock topography ('topg') and ice thickness ('thk') used for
+      noevolve mode. Required for each ice sheet with
+      icesheet_modes='noevolve'; ignored for 'prognostic' ice sheets.
+      Default: UNSET
+    </desc>
+  </entry>
+
+  <entry id="noevolve_nx">
+    <type>integer(10)</type>
+    <category>cism</category>
+    <group>cism_hybrid_nml</group>
+    <values>
+      <value>0</value>
+    </values>
+    <desc>
+      Per ice sheet, global x (longitude-like) dimension of the noevolve
+      data file. Required for each ice sheet with
+      icesheet_modes='noevolve'; ignored otherwise.
+      Default: 0
+    </desc>
+  </entry>
+
+  <entry id="noevolve_ny">
+    <type>integer(10)</type>
+    <category>cism</category>
+    <group>cism_hybrid_nml</group>
+    <values>
+      <value>0</value>
+    </values>
+    <desc>
+      Per ice sheet, global y (latitude-like) dimension of the noevolve
+      data file. Required for each ice sheet with
+      icesheet_modes='noevolve'; ignored otherwise.
+      Default: 0
+    </desc>
+  </entry>
+
+  <!-- =============================================================  -->
   <!-- group: time_manager_nml                                        -->
   <!-- =============================================================  -->
 

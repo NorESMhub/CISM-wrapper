@@ -13,7 +13,8 @@ module glc_import_export
   use NUOPC_Model         , only : NUOPC_ModelGet
   use shr_kind_mod        , only : r8 => shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
   use shr_sys_mod         , only : shr_sys_abort
-  use glc_constants       , only : verbose, stdout, stderr, tkfrz, radius, enable_frac_overrides
+  use glc_constants       , only : verbose, stdout, stderr, tkfrz, radius, enable_frac_overrides, &
+                                   max_icesheets
   use glc_communicate     , only : my_task, master_task
   use glc_time_management , only : iyear,imonth,iday,ihour,iminute,isecond
   use glc_indexing        , only : get_nx_tot, get_ny_tot, get_nx, get_ny, spatial_to_vector, vector_to_spatial
@@ -29,6 +30,10 @@ module glc_import_export
   public  :: import_fields
   public  :: export_fields
   public  :: get_num_icesheets
+  public  :: get_num_icesheets_total
+  public  :: get_NStateImp_noevolve
+  public  :: get_NStateExp_noevolve
+  public  :: get_icesheet_mode
 
   private :: fldlist_add
   private :: fldlist_realize
@@ -79,8 +84,13 @@ module glc_import_export
 
   type(ESMF_State), allocatable :: NStateImp(:)
   type(ESMF_State), allocatable :: NStateExp(:)
-  integer            :: num_icesheets
+  integer            :: num_icesheets       ! number of prognostic (CISM) ice sheets
+  integer            :: num_icesheets_total ! total ice sheets (prognostic + noevolve)
   integer            :: dbug_flag = 0
+
+  ! Per-NUOPC-ice-sheet mode tracking
+  character(len=32)  :: icesheet_mode(max_icesheets)  ! 'prognostic' or 'noevolve'
+  integer            :: nuopc_to_cism(max_icesheets)  ! NUOPC index -> CISM index (0 = noevolve)
 
   character(*), parameter :: u_FILE_u = &
        __FILE__
@@ -89,7 +99,7 @@ module glc_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, cism_evolve, num_icesheets_in, rc)
+  subroutine advertise_fields(gcomp, cism_evolve, num_icesheets_in, sheet_modes_in, rc)
 
     use glc_constants, only : glc_smb
 
@@ -97,6 +107,7 @@ contains
     type(ESMF_GridComp)            :: gcomp
     logical          , intent(in)  :: cism_evolve
     integer          , intent(in)  :: num_icesheets_in
+    character(len=*) , intent(in)  :: sheet_modes_in(:)  ! 'prognostic' or 'noevolve' per ice sheet
     integer          , intent(out) :: rc
 
     ! local variables
@@ -113,7 +124,17 @@ contains
 
     rc = ESMF_SUCCESS
 
-    num_icesheets = num_icesheets_in
+    ! Store total count and build mode / mapping arrays
+    num_icesheets_total = num_icesheets_in
+    num_icesheets = 0
+    nuopc_to_cism(:) = 0
+    do ns = 1, num_icesheets_total
+       icesheet_mode(ns) = trim(sheet_modes_in(ns))
+       if (trim(icesheet_mode(ns)) == 'prognostic') then
+          num_icesheets = num_icesheets + 1
+          nuopc_to_cism(ns) = num_icesheets
+       end if
+    end do
 
     call NUOPC_ModelGet(gcomp, importState=importState, exportState=exportState, rc=rc)
     if (chkErr(rc,__LINE__,u_FILE_u)) return
@@ -165,10 +186,10 @@ contains
     ! Create nested state for active ice sheets only
     !--------------------------------
 
-    allocate(NStateImp(num_icesheets))
-    allocate(NStateExp(num_icesheets))
+    allocate(NStateImp(num_icesheets_total))
+    allocate(NStateExp(num_icesheets_total))
 
-    do ns = 1,num_icesheets
+    do ns = 1,num_icesheets_total
        write(cnum,'(i0)') ns
        call NUOPC_AddNestedState(importState, CplSet="GLC"//trim(cnum), nestedState=NStateImp(ns), rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -196,8 +217,8 @@ contains
     call fldlist_add(fldsFrGlc_num, fldsFrglc, field_out_rofi_to_ocn)
     call fldlist_add(fldsFrGlc_num, fldsFrglc, field_out_rofl_to_ocn)
 
-    ! Now advertise above export fields
-    do ns = 1,num_icesheets
+    ! Now advertise above export fields (all ice sheets, regardless of mode)
+    do ns = 1,num_icesheets_total
        do nf = 1,fldsFrGlc_num
           call NUOPC_Advertise(NStateExp(ns), standardName=fldsFrGlc(nf)%stdname, &
                TransferOfferGeomObject='will provide', rc=rc)
@@ -222,8 +243,8 @@ contains
        call fldlist_add(fldsToGlc_num, fldsToGlc, field_in_so_s_depth, ungridded_lbound=1, ungridded_ubound=nlev_import)
      end if
 
-     ! Now advertise import fields
-     do ns = 1,num_icesheets
+     ! Now advertise import fields (all ice sheets, regardless of mode)
+     do ns = 1,num_icesheets_total
        do nf = 1,fldsToGlc_num
          call NUOPC_Advertise(NStateImp(ns), standardName=fldsToGlc(nf)%stdname, &
               TransferOfferGeomObject='will provide', rc=rc)
@@ -260,8 +281,8 @@ contains
 
     rc = ESMF_SUCCESS
 
-    ! Realize import and export states for each ice sheet
-    do ns = 1,num_icesheets
+    ! Realize import and export states for all ice sheets (prognostic + noevolve)
+    do ns = 1,num_icesheets_total
        write(cns,'(i0)') ns
 
        call fldlist_realize( &
@@ -312,19 +333,20 @@ contains
 
     rc = ESMF_SUCCESS
 
-    ! Get cism import fields
-    do ns = 1,num_icesheets
+    ! Get cism import fields — skip noevolve ice sheets (they handle their own imports)
+    do ns = 1,num_icesheets_total
+       if (trim(icesheet_mode(ns)) == 'noevolve') cycle
        associate(&
-            tsfc => cpl_bundles(ns)%tsfc, &
-            qsmb => cpl_bundles(ns)%qsmb, &
-            tocn => cpl_bundles(ns)%tocn, &
-            salinity => cpl_bundles(ns)%salinity)
+            tsfc     => cpl_bundles(nuopc_to_cism(ns))%tsfc, &
+            qsmb     => cpl_bundles(nuopc_to_cism(ns))%qsmb, &
+            tocn     => cpl_bundles(nuopc_to_cism(ns))%tocn, &
+            salinity => cpl_bundles(nuopc_to_cism(ns))%salinity)
 
        call state_getimport_2d(NStateImp(ns), field_in_tsrf, tsfc, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_getimport_2d(NStateImp(ns), field_in_qice, qsmb, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
 
        tsfc = tsfc - tkfrz
@@ -335,18 +357,12 @@ contains
 
        where (tsfc < -250.d0) tsfc=0.d0
 
-       !mp; 2024-06-19; reading here ocean t and s; we will calculate ocean
-       !thermal forcing later on. (idea would be to use 3d thermal_forcing
-       !variable already defined, as this is the variable for which
-       !extrapolation algorithm is available;
-       !Additional comment: found 3D variables tocn, salinity in routines that
-       !seems to be perfect to be used - see for instance comment by wjs in
-       !glc_InitMod.F90, 2021-06-25.
+       !mp; 2024-06-19; reading here ocean t and s
        call state_getimport_3d(NStateImp(ns), field_in_so_t_depth, tocn, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_getimport_3d(NStateImp(ns), field_in_so_s_depth, &
-            salinity, instance_index=ns, rc=rc)
+            salinity, instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
 
        if (dbug_flag > 0) then
@@ -410,32 +426,41 @@ contains
     rc = ESMF_SUCCESS
     call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
-    do ns = 1,num_icesheets
+    do ns = 1,num_icesheets_total
+
+       ! Noevolve ice sheets manage their own export fields in glc_noevolve_mod;
+       ! only set scalars here so the mediator knows their grid dimensions.
+       if (trim(icesheet_mode(ns)) == 'noevolve') then
+          call State_SetScalar(0._r8, flds_scalar_index_nx, &
+               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          call State_SetScalar(0._r8, flds_scalar_index_ny, &
+               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          cycle
+       end if
+
        associate( &
-            ice_covered         => cpl_bundles(ns)%ice_covered, &
-            topo                => cpl_bundles(ns)%topo, &
-            rofi                => cpl_bundles(ns)%rofi, &
-            rofl                => cpl_bundles(ns)%rofl, &
-            hflx                => cpl_bundles(ns)%hflx, &
-            ice_sheet_grid_mask => cpl_bundles(ns)%ice_sheet_grid_mask)
+            cism_ns             => nuopc_to_cism(ns), &
+            ice_covered         => cpl_bundles(nuopc_to_cism(ns))%ice_covered, &
+            topo                => cpl_bundles(nuopc_to_cism(ns))%topo, &
+            rofi                => cpl_bundles(nuopc_to_cism(ns))%rofi, &
+            rofl                => cpl_bundles(nuopc_to_cism(ns))%rofl, &
+            hflx                => cpl_bundles(nuopc_to_cism(ns))%hflx, &
+            ice_sheet_grid_mask => cpl_bundles(nuopc_to_cism(ns))%ice_sheet_grid_mask)
 
-       nx = get_nx(instance_index=ns)
-       ny = get_ny(instance_index=ns)
+       nx = get_nx(instance_index=nuopc_to_cism(ns))
+       ny = get_ny(instance_index=nuopc_to_cism(ns))
 
-       ! glc_areas are constant in time, so we could just set it once in initialization;
-       ! but for simplicity we just reset it each time
        allocate(glc_areas(nx,ny))
-       call glad_get_areas(ice_sheet, instance_index = ns, areas=glc_areas)
-       glc_areas(:,:) = glc_areas(:,:)/(radius*radius) ! convert from m^2 to radians^2
+       call glad_get_areas(ice_sheet, instance_index=nuopc_to_cism(ns), areas=glc_areas)
+       glc_areas(:,:) = glc_areas(:,:)/(radius*radius)
 
-       ! If overrides of glc fraction are enabled (for testing purposes), then apply
-       ! these overrides, otherwise use the real version of ice_covered and topo
        if (enable_frac_overrides) then
           allocate(ice_covered_to_cpl(lbound(ice_covered,1):ubound(ice_covered,1), &
                lbound(ice_covered,2):ubound(ice_covered,2)))
           allocate(topo_to_cpl(lbound(topo,1):ubound(topo,1), &
                lbound(topo,2):ubound(topo,2)))
-
           ice_covered_to_cpl = ice_covered
           topo_to_cpl = topo
           call do_frac_overrides(ice_covered_to_cpl, topo_to_cpl, ice_sheet_grid_mask)
@@ -452,7 +477,7 @@ contains
        allocate(rofi_to_ocn(nx, ny))
        allocate(rofi_to_ice(nx, ny))
 
-       if (ice_sheet%instances(ns)%zero_gcm_fluxes) then
+       if (ice_sheet%instances(nuopc_to_cism(ns))%zero_gcm_fluxes) then
           icemask_coupled_fluxes = 0._r8
           hflx_to_cpl = 0._r8
           rofl_to_cpl = 0._r8
@@ -465,49 +490,42 @@ contains
           call route_ice_runoff(rofi, rofi_to_ocn, rofi_to_ice)
        end if
 
-       ! Fill export state for ice sheet
-
-       ! area is constant in time, so if it were easy to just send this during
-       ! initialization, we could do that - but currently, for ease of implementation, we
-       ! resend it every coupling interval
        call state_setexport(NStateExp(ns), field_out_area, glc_areas, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
 
        call state_setexport(NStateExp(ns), field_out_rofi_to_ocn, rofi_to_ocn, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_rofi_to_ice, rofi_to_ice, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_rofl_to_ocn, rofl_to_cpl, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_ice_covered, ice_covered_to_cpl, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_topo, topo_to_cpl, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_hflx_to_lnd, hflx_to_cpl, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_icemask, ice_sheet_grid_mask, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
        call state_setexport(NStateExp(ns), field_out_icemask_coupled_fluxes, icemask_coupled_fluxes, &
-            instance_index=ns, rc=rc)
+            instance_index=nuopc_to_cism(ns), rc=rc)
        if (chkErr(rc,__LINE__,u_FILE_u)) return
 
-       ! Set scalars in export state
-       call State_SetScalar(dble(get_nx_tot(instance_index=ns)), flds_scalar_index_nx, &
+       call State_SetScalar(dble(get_nx_tot(instance_index=nuopc_to_cism(ns))), flds_scalar_index_nx, &
             NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       call State_SetScalar(dble(get_ny_tot(instance_index=ns)), flds_scalar_index_ny, &
+       call State_SetScalar(dble(get_ny_tot(instance_index=nuopc_to_cism(ns))), flds_scalar_index_ny, &
             NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       ! Diagnose state data if appropriate
        if (dbug_flag > 1) then
           call State_diagnose(NStateExp(ns), trim(subname)//':ES',rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -532,11 +550,54 @@ contains
   !===============================================================================
 
   integer function get_num_icesheets()
-    ! ----------------------------------------------
-    ! Return the num_icesheets value stored in this module
-    ! ----------------------------------------------
     get_num_icesheets = num_icesheets
   end function get_num_icesheets
+
+  integer function get_num_icesheets_total()
+    get_num_icesheets_total = num_icesheets_total
+  end function get_num_icesheets_total
+
+  function get_NStateImp_noevolve() result(states)
+    ! Return import nested states for the noevolve ice sheets only
+    type(ESMF_State), allocatable :: states(:)
+    integer :: ns, k
+    k = 0
+    do ns = 1, num_icesheets_total
+       if (trim(icesheet_mode(ns)) == 'noevolve') k = k + 1
+    end do
+    allocate(states(k))
+    k = 0
+    do ns = 1, num_icesheets_total
+       if (trim(icesheet_mode(ns)) == 'noevolve') then
+          k = k + 1
+          states(k) = NStateImp(ns)
+       end if
+    end do
+  end function get_NStateImp_noevolve
+
+  function get_NStateExp_noevolve() result(states)
+    ! Return export nested states for the noevolve ice sheets only
+    type(ESMF_State), allocatable :: states(:)
+    integer :: ns, k
+    k = 0
+    do ns = 1, num_icesheets_total
+       if (trim(icesheet_mode(ns)) == 'noevolve') k = k + 1
+    end do
+    allocate(states(k))
+    k = 0
+    do ns = 1, num_icesheets_total
+       if (trim(icesheet_mode(ns)) == 'noevolve') then
+          k = k + 1
+          states(k) = NStateExp(ns)
+       end if
+    end do
+  end function get_NStateExp_noevolve
+
+  function get_icesheet_mode(ns) result(mode)
+    integer, intent(in)  :: ns
+    character(len=32)    :: mode
+    mode = icesheet_mode(ns)
+  end function get_icesheet_mode
 
   !===============================================================================
 
