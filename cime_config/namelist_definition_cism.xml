@@ -175,98 +175,6 @@ Sub-elements of each entry include:
   </entry>
 
   <!-- =============================================================  -->
-  <!-- group: cism_hybrid_nml                                         -->
-  <!-- =============================================================  -->
-  <!-- Hybrid configuration: per-ice-sheet mode selection.            -->
-  <!-- Some ice sheets can be run prognostically (CISM dycore), and   -->
-  <!-- others as 'noevolve' (static data read from a file, with ice   -->
-  <!-- runoff diagnosed from the imported surface mass balance).      -->
-  <!--                                                                -->
-  <!-- All arrays are indexed by ice-sheet number 1..N, matching the  -->
-  <!-- order of mesh files in the mediator's mesh_glc attribute.      -->
-  <!-- cism_params:icesheet_names lists only the prognostic subset,   -->
-  <!-- in the same relative order.                                    -->
-  <!--                                                                -->
-  <!-- If this group is omitted, all ice sheets default to            -->
-  <!-- 'prognostic' and the cap behaves as before.                    -->
-  <!-- =============================================================  -->
-
-  <entry id="icesheet_modes" skip_default_entry="true">
-    <type>char(10)</type>
-    <category>cism</category>
-    <group>cism_hybrid_nml</group>
-    <valid_values>prognostic,noevolve</valid_values>
-    <desc>
-      Per ice sheet, selects the operating mode:
-      'prognostic' = run the CISM dycore for this ice sheet
-      'noevolve'   = read static topography/thickness from a file and
-                     diagnose ice runoff (Fgrg_rofi) from the imported
-                     surface mass balance; all other CISM-specific
-                     export fields (Flgg_hflx, Figg_rofi, Fgrg_rofl,
-                     Flrr_flood, Flrr_volr, Flrr_volrmch) are zero-filled.
-      The array is sized to match cism_params:icesheet_names and is
-      indexed in the same order. By default every entry is set to
-      'prognostic' by buildnml, which preserves CISM-only behavior.
-      To make an ice sheet noevolve, change its entry to 'noevolve'
-      via user_nl_cism (and provide noevolve_datafiles, noevolve_nx,
-      noevolve_ny for that entry).
-    </desc>
-  </entry>
-
-  <entry id="noevolve_datafiles">
-    <type>char(10)</type>
-    <category>cism</category>
-    <group>cism_hybrid_nml</group>
-    <input_pathname>abs</input_pathname>
-    <values>
-      <value glc_grid="ais8:gris4">$DIN_LOC_ROOT/glc/cism/Antarctica/antarctica_8km_epsg3031_c20250403.nc,$DIN_LOC_ROOT/glc/cism/Greenland/greenland_4km_epsg3413_c20250227.nc</value>
-      <value glc_grid="gris4">$DIN_LOC_ROOT/glc/cism/Greenland/greenland_4km_epsg3413_c20250227.nc</value>
-      <value glc_grid="ais8" >$DIN_LOC_ROOT/glc/cism/Antarctica/antarctica_8km_epsg3031_c20250403.nc</value>
-    </values>
-    <desc>
-      Per ice sheet, full path to the static NetCDF file containing the
-      bedrock topography ('topg') and ice thickness ('thk') used for
-      noevolve mode. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored for 'prognostic' ice sheets.
-    </desc>
-  </entry>
-
-  <entry id="noevolve_nx">
-    <type>integer(10)</type>
-    <category>cism</category>
-    <group>cism_hybrid_nml</group>
-    <values>
-      <value glc_grid="ais8:gris4">761,421</value>
-      <value glc_grid="ais8">761</value>
-      <value glc_grid="gris4">421</value>
-      <value glc_grid="gris20">76</value>
-    </values>
-    <desc>
-      Per ice sheet, global x (longitude-like) dimension of the noevolve
-      data file. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored otherwise.
-    </desc>
-  </entry>
-
-  <entry id="noevolve_ny">
-    <type>integer(10)</type>
-    <category>cism</category>
-    <group>cism_hybrid_nml</group>
-    <values>
-      <value glc_grid="ais8:gris4">761,721</value>
-      <value glc_grid="ais8">761</value>
-      <value glc_grid="gris4">721</value>
-      <value glc_grid="gris20">141</value>
-    </values>
-    <desc>
-      Per ice sheet, global y (latitude-like) dimension of the noevolve
-      data file. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored otherwise.
-      Default: 0
-    </desc>
-  </entry>
-
-  <!-- =============================================================  -->
   <!-- group: time_manager_nml                                        -->
   <!-- =============================================================  -->
 
@@ -740,8 +648,7 @@ Sub-elements of each entry include:
     <category>cism_config_history</category>
     <group>esm_output</group>
     <values>
-      <value icesheet="gris" cism_evolve_this_icesheet=".true." >thk usurf topg velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied_tavg bmlt_applied_tavg calving_rate_tavg frontal_melt_rate_tavg forceretreat_rate_tavg rmicecap_rate_tavg       iareag iareaf imass imass_above_flotation total_smb_flux_tavg total_bmb_flux_tavg total_calving_flux_tavg total_frontal_melt_flux_tavg total_forceretreat_flux_tavg total_rmicecap_flux_tavg total_gl_flux_tavg</value>
-      <value icesheet="ais" cism_evolve_this_icesheet=".true." >thk usurf topg base velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied_tavg bmlt_applied_tavg calving_rate_tavg frontal_melt_rate_tavg forceretreat_rate_tavg rmicecap_rate_tavg       iareag iareaf imass imass_above_flotation total_smb_flux_tavg total_bmb_flux_tavg total_calving_flux_tavg total_frontal_melt_flux_tavg total_forceretreat_flux_tavg total_rmicecap_flux_tavg total_gl_flux_tavg</value>
+      <value cism_evolve_this_icesheet=".true." >smb artm thk usurf topg uvel vvel temp bmlt bwat beta_internal floating_mask grounded_mask bpmp acab_applied bmlt_applied calving_rate iareaf iareag imass imass_above_flotation total_smb_flux total_bmb_flux total_calving_flux total_gl_flux ice_sheet_mask ice_cap_mask</value>
       <value cism_evolve_this_icesheet=".false.">smb artm thk usurf topg</value>
     </values>
     <desc>
@@ -983,7 +890,7 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">3</value>
+      <value icesheet="gris">0</value>
       <value icesheet="ais" >0</value>
     </values>
     <desc>
@@ -999,10 +906,10 @@ Sub-elements of each entry include:
   <entry id="frontal_melt_factor">
     <type>real</type>
     <category>cism_config_options</category>
-    <group>parameters</group>
+    <group>options</group>
     <values>
       <value icesheet="gris">1.0</value>
-      <value icesheet="ais" >0.0</value>
+      <value icesheet="ais" >1.0</value>
     </values>
     <desc>
       Multiplier for Rignot frontal melt parameterisation. 
@@ -1118,7 +1025,7 @@ Sub-elements of each entry include:
     <category>cism_config_options</category>
     <group>options</group>
     <values>
-      <value>.true.</value>
+      <value>.false.</value>
     </values>
     <desc>
       If true, then thin marine-based cliffs based on a thickness threshold
@@ -1161,12 +1068,12 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1</valid_values>
     <values>
-      <value>0</value>
+      <value>1</value>
     </values>
     <desc>
       0: Do not calve at initialization
       1: Calve at initialization
-      Default: 0
+      Default: 1
     </desc>
   </entry>
 
@@ -2053,11 +1960,11 @@ Sub-elements of each entry include:
     <category>cism_config_parameters</category>
     <group>parameters</group>
     <values>
-      <value>5.</value>
+      <value>1.</value>
     </values>
     <desc>
       Ice thinner than this threshold (m) is removed at initialization.
-      Default: 5.0
+      Default: 1.0
     </desc>
   </entry>
 
@@ -2164,7 +2071,7 @@ Sub-elements of each entry include:
     <category>cism_config_parameters</category>
     <group>parameters</group>
     <values>
-      <value icesheet="gris">10.</value>
+      <value icesheet="gris">100.</value>
       <value icesheet="ais" >100.</value>
     </values>
     <desc>
@@ -2452,7 +2359,7 @@ Sub-elements of each entry include:
     <category>cism_config_parameters</category>
     <group>parameters</group>
     <values>
-      <value icesheet="gris">5000.</value>
+      <value icesheet="gris">0.0</value>
       <value icesheet="ais" >5000.</value>
     </values>
     <desc>
@@ -2523,7 +2430,7 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15</valid_values>
     <values>
-      <value icesheet="gris">9</value>
+      <value icesheet="gris">3</value>
       <value icesheet="ais" >9</value>
     </values>
     <desc>
@@ -2571,8 +2478,8 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">1</value>
-      <value icesheet="ais" >1</value>
+      <value icesheet="gris">0</value>
+      <value icesheet="ais" >0</value>
     </values>
     <desc>
       Flag for basal inversion options: invert for Cp = powerlaw_c
@@ -2659,7 +2566,7 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">0</value>
+      <value icesheet="gris">2</value>
       <value icesheet="ais" >0</value>
     </values>
     <desc>
@@ -2678,7 +2585,7 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3,4</valid_values>
     <values>
-      <value icesheet="gris">0</value>
+      <value icesheet="gris">4</value>
       <value icesheet="ais" >0</value>
     </values>
     <desc>
@@ -4027,11 +3934,11 @@ Sub-elements of each entry include:
     <category>cism_config_parameters</category>
     <group>parameters</group>
     <values>
-      <value>1027.0</value>
+      <value>1026.0</value>
     </values>
     <desc>
       Density of the ocean (kg/m^3)
-      Default: 1027.0
+      Default: 1026.0
     </desc>
   </entry>
 
