@@ -28,6 +28,8 @@ module glc_noevolve_mod
   use pio              , only : pio_inq_dimlen, pio_initdecomp, pio_read_darray, pio_double
   use pio              , only : pio_closefile, pio_freedecomp, PIO_BCAST_ERROR, PIO_NOWRITE
   use pio              , only : pio_seterrorhandling
+  use glc_constants    , only : stdout
+  use glc_communicate  , only : my_task, master_task
 
   implicit none
   private
@@ -213,6 +215,9 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        !--- Open data file, set up PIO decomposition, read topg and thk ---
+       if (my_task == master_task) then
+          write(stdout,'(a,a)')' opening file ',trim(datafiles(ns))
+       end if
        rcode = pio_openfile(pio_subsystem, pioid, io_type, trim(datafiles(ns)), PIO_NOWRITE)
        call pio_seterrorhandling(pioid, PIO_BCAST_ERROR)
 

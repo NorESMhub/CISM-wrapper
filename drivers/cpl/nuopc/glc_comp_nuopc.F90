@@ -549,7 +549,7 @@ contains
     end do
 
     !--------------------------------
-    ! Initialize noevolve ice sheets (if any) — must run after realize_fields so
+    ! Initialize noevolve ice sheets (if any) must run after realize_fields so
     ! ESMF fields exist, and before the first export_fields call.
     !--------------------------------
 
