@@ -74,6 +74,15 @@ module glc_comp_nuopc
   integer            :: noevolve_nx(max_icesheets_cap) = 0
   integer            :: noevolve_ny(max_icesheets_cap) = 0
   integer            :: num_noevolve = 0
+
+  ! Tightly-packed (1..num_noevolve) arrays for the noevolve ice sheets.
+  ! Allocated once in InitializeRealize and kept for the run, so the field
+  ! pointers stored in glc_noevolve_mod remain backed by live ESMF state
+  ! handles and meshes.
+  type(ESMF_State), allocatable :: noevolve_NStateExp(:)
+  type(ESMF_State), allocatable :: noevolve_NStateImp(:)
+  type(ESMF_Mesh) , allocatable :: noevolve_meshes(:)
+
   character(len=*),parameter :: u_FILE_u = &
        __FILE__
 
@@ -316,10 +325,8 @@ contains
     integer                 :: ne_idx                   ! running noevolve index within the mesh loop
     type(iosystem_desc_t), pointer :: glc_pio_subsystem
     integer                 :: glc_io_type
-    type(ESMF_State), allocatable :: ne_NStateExp(:), ne_NStateImp(:)
-    type(ESMF_Mesh) , allocatable :: ne_meshes(:)
-    character(len=cs), allocatable :: ne_datafiles(:)
-    integer , allocatable   :: ne_nx(:), ne_ny(:)
+    character(len=cs), allocatable :: noevolve_datafiles_loc(:)
+    integer , allocatable          :: noevolve_nx_loc(:), noevolve_ny_loc(:)
     character(*), parameter :: F00   = "('(InitializeRealize) ',8a)"
     character(*), parameter :: F01   = "('(InitializeRealize) ',a,8i8)"
     character(*), parameter :: F91   = "('(InitializeRealize) ',73('-'))"
@@ -552,20 +559,20 @@ contains
     end do
 
     if (num_noevolve > 0) then
-       ne_NStateExp = get_NStateExp_noevolve()
-       ne_NStateImp = get_NStateImp_noevolve()
-       allocate(ne_meshes(num_noevolve))
-       allocate(ne_datafiles(num_noevolve))
-       allocate(ne_nx(num_noevolve))
-       allocate(ne_ny(num_noevolve))
+       noevolve_NStateExp = get_NStateExp_noevolve()
+       noevolve_NStateImp = get_NStateImp_noevolve()
+       allocate(noevolve_meshes(num_noevolve))
+       allocate(noevolve_datafiles_loc(num_noevolve))
+       allocate(noevolve_nx_loc(num_noevolve))
+       allocate(noevolve_ny_loc(num_noevolve))
        ne_idx = 0
        do ns = 1, num_icesheets_total_local
           if (trim(get_icesheet_mode(ns)) == 'noevolve') then
              ne_idx = ne_idx + 1
-             ne_meshes(ne_idx)    = mesh(ns)
-             ne_datafiles(ne_idx) = noevolve_datafiles(ns)
-             ne_nx(ne_idx)        = noevolve_nx(ns)
-             ne_ny(ne_idx)        = noevolve_ny(ns)
+             noevolve_meshes(ne_idx)        = mesh(ns)
+             noevolve_datafiles_loc(ne_idx) = noevolve_datafiles(ns)
+             noevolve_nx_loc(ne_idx)        = noevolve_nx(ns)
+             noevolve_ny_loc(ne_idx)        = noevolve_ny(ns)
           end if
        end do
 
@@ -573,17 +580,19 @@ contains
        glc_pio_subsystem => shr_pio_getiosys('GLC')
        glc_io_type       =  shr_pio_getiotype('GLC')
 
-       call noevolve_init(num_noevolve, ne_NStateExp, ne_NStateImp, ne_meshes, &
-            ne_datafiles, ne_nx, ne_ny, glc_pio_subsystem, glc_io_type, rc)
+       call noevolve_init(num_noevolve, noevolve_NStateExp, noevolve_NStateImp, noevolve_meshes, &
+            noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc, glc_pio_subsystem, glc_io_type, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        ! Zero-fill the CISM-specific export fields (heat flux, runoff, etc.)
        ! for noevolve ice sheets — they remain zero for the entire run.
-       call noevolve_zero_cism_fields(ne_NStateExp, rc)
+       call noevolve_zero_cism_fields(noevolve_NStateExp, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       deallocate(ne_NStateExp, ne_NStateImp, ne_meshes)
-       deallocate(ne_datafiles, ne_nx, ne_ny)
+       ! Note: noevolve_NStateExp, noevolve_NStateImp, noevolve_meshes are
+       ! deliberately kept allocated for the entire run — they back the field
+       ! pointers cached in glc_noevolve_mod.
+       deallocate(noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc)
     end if
 
     !--------------------------------
