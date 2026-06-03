@@ -70,7 +70,7 @@ module glc_comp_nuopc
   ! Hybrid (prognostic + noevolve) configuration — read from cism_hybrid_nml
   integer, parameter :: max_icesheets_cap  = 10
   character(len=cs)  :: icesheet_modes(max_icesheets_cap) = 'prognostic'
-  character(len=cs)  :: noevolve_datafiles(max_icesheets_cap) = 'UNSET'
+  character(len=cs)  :: noevolve_datafiles(max_icesheets_cap)
   integer            :: noevolve_nx(max_icesheets_cap) = 0
   integer            :: noevolve_ny(max_icesheets_cap) = 0
   integer            :: num_noevolve = 0
@@ -225,7 +225,7 @@ contains
           ! nml_error < 0 means group not found — that's fine, defaults remain
        end if
     end if
-    call ESMF_VMBroadcast(vm, icesheet_modes,    cs*max_icesheets_cap, 0, rc=rc)
+    call ESMF_VMBroadcast(vm, icesheet_modes, cs*max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call ESMF_VMBroadcast(vm, noevolve_datafiles, cs*max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return

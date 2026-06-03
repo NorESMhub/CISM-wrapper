@@ -219,14 +219,15 @@ Sub-elements of each entry include:
     <group>cism_hybrid_nml</group>
     <input_pathname>abs</input_pathname>
     <values>
-      <value>UNSET</value>
+      <value glc_grid="ais8:gris4">$DIN_LOC_ROOT/glc/cism/Antarctica/antarctica_8km_epsg3031_c20250403.nc,$DIN_LOC_ROOT/glc/cism/Greenland/greenland_4km_epsg3413_c20250227.nc</value>
+      <value glc_grid="gris4">$DIN_LOC_ROOT/glc/cism/Greenland/greenland_4km_epsg3413_c20250227.nc</value>
+      <value glc_grid="ais8" >$DIN_LOC_ROOT/glc/cism/Antarctica/antarctica_8km_epsg3031_c20250403.nc</value>
     </values>
     <desc>
       Per ice sheet, full path to the static NetCDF file containing the
       bedrock topography ('topg') and ice thickness ('thk') used for
       noevolve mode. Required for each ice sheet with
       icesheet_modes='noevolve'; ignored for 'prognostic' ice sheets.
-      Default: UNSET
     </desc>
   </entry>
 
@@ -235,13 +236,15 @@ Sub-elements of each entry include:
     <category>cism</category>
     <group>cism_hybrid_nml</group>
     <values>
-      <value>0</value>
+      <value glc_grid="ais8:gris4">761,421</value>
+      <value glc_grid="ais8">761</value>
+      <value glc_grid="gris4">421</value>
+      <value glc_grid="gris20">76</value>
     </values>
     <desc>
       Per ice sheet, global x (longitude-like) dimension of the noevolve
       data file. Required for each ice sheet with
       icesheet_modes='noevolve'; ignored otherwise.
-      Default: 0
     </desc>
   </entry>
 
@@ -250,7 +253,10 @@ Sub-elements of each entry include:
     <category>cism</category>
     <group>cism_hybrid_nml</group>
     <values>
-      <value>0</value>
+      <value glc_grid="ais8:gris4">761,721</value>
+      <value glc_grid="ais8">761</value>
+      <value glc_grid="gris4">721</value>
+      <value glc_grid="gris20">141</value>
     </values>
     <desc>
       Per ice sheet, global y (latitude-like) dimension of the noevolve

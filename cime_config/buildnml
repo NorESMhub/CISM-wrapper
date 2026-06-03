@@ -368,6 +368,7 @@ def _create_cism_in(case, confdir, inst_string, icesheet_names, infile, nmlgen, 
     # true if *any* ice sheet is evolving.
     config['cism_evolve'] = '.true.' if case.get_value('CISM_EVOLVE') else '.false.'
     config['calendar'] = case.get_value("CALENDAR")
+    config['glc_grid'] = case.get_value("GLC_GRID")
 
     run_type = _get_effective_run_type(case)
 
