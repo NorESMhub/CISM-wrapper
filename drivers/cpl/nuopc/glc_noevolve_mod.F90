@@ -28,15 +28,16 @@ module glc_noevolve_mod
   use pio              , only : pio_inq_dimlen, pio_initdecomp, pio_read_darray, pio_double
   use pio              , only : pio_closefile, pio_freedecomp, PIO_BCAST_ERROR, PIO_NOWRITE
   use pio              , only : pio_seterrorhandling
+  use shr_pio_mod      , only : shr_pio_getiosys, shr_pio_getiotype
   use glc_constants    , only : stdout
   use glc_communicate  , only : my_task, master_task
 
   implicit none
   private
 
-  public :: noevolve_init
-  public :: noevolve_advance
-  public :: noevolve_zero_cism_fields
+  public :: glc_noevolve_init
+  public :: glc_noevolve_advance
+  public :: glc_noevolve_zero_cism_fields
 
   !----------------------------------------------------------------------------
   ! Per-ice-sheet pointer type (field data lives in the ESMF field; we hold
@@ -57,8 +58,6 @@ module glc_noevolve_mod
   ! Import field pointer (SMB, needed every coupling step)
   type(icesheet_ptr_t), allocatable :: Flgl_qice(:)
 
-  integer :: num_noevolve_saved = 0
-
   ! Field name constants — must match the names used in glc_import_export.F90
   character(len=*), parameter :: fld_out_area       = 'Sg_area'
   character(len=*), parameter :: fld_out_topo       = 'Sg_topo'
@@ -78,14 +77,16 @@ module glc_noevolve_mod
 
   real(r8), parameter :: thk0 = 1._r8  ! thickness scaling (= 1 in modern CISM)
 
+  integer :: num_icesheets_total ! total number of ice sheets (prognostic + noevolve)
+
   character(len=*), parameter :: u_FILE_u = __FILE__
 
 !===============================================================================
 contains
 !===============================================================================
 
-  subroutine noevolve_init(num_noevolve, NStateExp, NStateImp, meshes, &
-       datafiles, nx_global, ny_global, internal_gridsize, pio_subsystem, io_type, rc)
+  subroutine glc_noevolve_init(NStateExp, NStateImp, meshes, &
+       datafiles, nx_global, ny_global, internal_gridsize, rc)
 
     !---------------------------------------------------------------------------
     ! Read static topography and thickness for each noevolve ice sheet, compute
@@ -98,21 +99,18 @@ contains
     !---------------------------------------------------------------------------
 
     ! input/output variables
-    integer               , intent(in)    :: num_noevolve
-    type(ESMF_State)      , intent(inout) :: NStateExp(:)        ! (num_noevolve)
-    type(ESMF_State)      , intent(inout) :: NStateImp(:)        ! (num_noevolve)
-    type(ESMF_Mesh)       , intent(in)    :: meshes(:)           ! (num_noevolve)
-    character(len=*)      , intent(in)    :: datafiles(:)        ! (num_noevolve)
-    integer               , intent(in)    :: nx_global(:)        ! (num_noevolve)
-    integer               , intent(in)    :: ny_global(:)        ! (num_noevolve)
-    real(r8)              , intent(in)    :: internal_gridsize(:) ! [m] (num_noevolve)
-    type(iosystem_desc_t) , pointer       :: pio_subsystem
-    integer               , intent(in)    :: io_type
+    type(ESMF_State)      , intent(inout) :: NStateExp(:)         ! all ice sheets (including prognostic)
+    type(ESMF_State)      , intent(inout) :: NStateImp(:)         ! all ice sheets (including prognostic)
+    type(ESMF_Mesh)       , intent(in)    :: meshes(:)            ! all ice sheets (including prognostic)
+    character(len=*)      , intent(in)    :: datafiles(:)         ! all ice sheets (including prognostic)
+    integer               , intent(in)    :: nx_global(:)         ! all ice sheets (including prognostic)
+    integer               , intent(in)    :: ny_global(:)         ! all ice sheets (including prognostic)
+    real(r8)              , intent(in)    :: internal_gridsize(:) ! [m] all ice sheets (including prognostic)
     integer               , intent(out)   :: rc
 
     ! local variables
     type(ESMF_DistGrid)    :: distgrid
-    type(ESMF_FieldBundle) :: fldbun
+    type(ESMF_FieldBundle) :: fldbun_noevolve
     type(ESMF_Field)       :: field_tmp
     type(file_desc_t)      :: pioid
     type(io_desc_t)        :: pio_iodesc
@@ -122,25 +120,36 @@ contains
     integer                :: ns, ng, lsize, ndims, rcode
     integer , allocatable  :: dimid(:)
     real(r8)               :: rhoi, rhoo, eus, lsrf, usrf
+    integer                :: io_type
+    type(iosystem_desc_t), pointer :: pio_subsystem
     character(len=*), parameter :: subname = '(glc_noevolve_mod:noevolve_init) '
     !---------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    num_noevolve_saved = num_noevolve
 
-    allocate(Sg_area(num_noevolve))
-    allocate(Sg_topo(num_noevolve))
-    allocate(Sg_ice_covered(num_noevolve))
-    allocate(Sg_icemask(num_noevolve))
-    allocate(Sg_icemask_coupled_fluxes(num_noevolve))
-    allocate(Fgrg_rofi(num_noevolve))
-    allocate(Flgl_qice(num_noevolve))
+    ! Set module variables
+    num_icesheets_total = size(NStateExp)
+
+    allocate(Sg_area(num_icesheets_total))
+    allocate(Sg_topo(num_icesheets_total))
+    allocate(Sg_ice_covered(num_icesheets_total))
+    allocate(Sg_icemask(num_icesheets_total))
+    allocate(Sg_icemask_coupled_fluxes(num_icesheets_total))
+    allocate(Fgrg_rofi(num_icesheets_total))
+    allocate(Flgl_qice(num_icesheets_total))
 
     rhoi = SHR_CONST_RHOICE
     rhoo = SHR_CONST_RHOSW
     eus  = 0._r8
 
-    do ns = 1, num_noevolve
+    ! Get the GLC PIO iosystem from the shared CESM PIO initialization
+    pio_subsystem => shr_pio_getiosys('GLC')
+    io_type       =  shr_pio_getiotype('GLC')
+
+    ! Loop over ice sheets and initialize only those that are noevolve
+    ice_sheet_loop: do ns = 1, num_icesheets_total
+
+       if (trim(get_icesheet_mode(ns)) /= 'noevolve') cycle
 
        !--- Grab pointers into the ESMF export fields ---
        call dshr_state_getfldptr(NStateExp(ns), fld_out_area, &
@@ -191,47 +200,62 @@ contains
        !--- Cell area (radians^2, constant) ---
        !    Computed from the user-specified internal grid spacing (matches the
        !    dglc datamode_noevolve convention).
+       !    SHR_CONST_REARTH is the radius of earth in m
+       !    model_internal_gridsize is the internal model gridsize in m
        do ng = 1, lsize
           Sg_area(ns)%ptr(ng) = (internal_gridsize(ns) / SHR_CONST_REARTH)**2
        end do
 
        !--- Build field bundle to hold topg and thk from file ---
-       fldbun = ESMF_FieldBundleCreate(rc=rc)
+       fldbun_noevolve = ESMF_FieldBundleCreate(rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-       field_tmp = ESMF_FieldCreate(meshes(ns), ESMF_TYPEKIND_R8, &
+       ! "ice thickness" ;
+       field_noevolve = ESMF_FieldCreate(meshes(ns), ESMF_TYPEKIND_R8, &
             name='thk', meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_FieldBundleAdd(fldbun, (/field_tmp/), rc=rc)
+       call ESMF_FieldBundleAdd(fldbun_noevolve, (/field_noevolve/), rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-       field_tmp = ESMF_FieldCreate(meshes(ns), ESMF_TYPEKIND_R8, &
+       ! "bed topography" ;
+       field_noevolve = ESMF_FieldCreate(meshes(ns), ESMF_TYPEKIND_R8, &
             name='topg', meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_FieldBundleAdd(fldbun, (/field_tmp/), rc=rc)
+       call ESMF_FieldBundleAdd(fldbun_noevolve, (/field_noevolve/), rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        !--- Open data file, set up PIO decomposition, read topg and thk ---
-       if (my_task == master_task) then
-          write(stdout,'(a,a)')' opening file ',trim(datafiles(ns))
+       inquire(file=trim(datafiles(ns)), exist=exists)
+       if (.not.exists) then
+          call shr_log_error(' ERROR: model input file '//trim(datafiles(ns))//' does not exist', rc=rc)
+          return
+       else
+          if (my_task == master_task) then
+             write(stdout,'(a,a)')' opening file ',trim(datafiles(ns))
+          end if
        end if
        rcode = pio_openfile(pio_subsystem, pioid, io_type, trim(datafiles(ns)), PIO_NOWRITE)
        call pio_seterrorhandling(pioid, PIO_BCAST_ERROR)
-
        rcode = pio_inq_varid(pioid, 'thk', varid)
        rcode = pio_inq_varndims(pioid, varid, ndims)
        allocate(dimid(ndims))
        rcode = pio_inq_vardimid(pioid, varid, dimid(1:ndims))
        deallocate(dimid)
-       call pio_initdecomp(pio_subsystem, pio_double, &
-            (/nx_global(ns), ny_global(ns)/), gindex, pio_iodesc)
+       call pio_initdecomp(pio_subsystem, pio_double, (/nx_global(ns), ny_global(ns)/), gindex, pio_iodesc)
 
-       call dshr_fldbun_getFldPtr(fldbun, 'topg', topog, rc=rc)
+       ! Read in the data into the appropriate field bundle pointers
+       ! Note that Sg_ice_covered(ns)%ptr points into the data for
+       ! the Sg_ice_covered field in NStateExp(ns)
+       ! Note that Sg_topo(ns)%ptr points into the data for
+       ! the Sg_topon NStateExp(ns)
+       ! Note that topog is bedrock topography
+
+       call dshr_fldbun_getFldPtr(fldbun_noevolve, 'topg', topog, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        rcode = pio_inq_varid(pioid, 'topg', varid)
        call pio_read_darray(pioid, varid, pio_iodesc, topog, rcode)
 
-       call dshr_fldbun_getFldPtr(fldbun, 'thk', thck, rc=rc)
+       call dshr_fldbun_getFldPtr(fldbun_evolve, 'thk', thck, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        rcode = pio_inq_varid(pioid, 'thk', varid)
        call pio_read_darray(pioid, varid, pio_iodesc, thck, rcode)
@@ -250,28 +274,32 @@ contains
           usrf = max(0._r8, thck(ng) + lsrf)
 
           if (thk0 * usrf > 0._r8) then
-             Sg_icemask(ns)%ptr(ng)              = 1._r8
+             Sg_icemask(ns)%ptr(ng) = 1._r8
              Sg_icemask_coupled_fluxes(ns)%ptr(ng) = 1._r8
-             Sg_topo(ns)%ptr(ng)                 = thk0 * usrf
+             Sg_topo(ns)%ptr(ng) = thk0 * usrf
              Sg_ice_covered(ns)%ptr(ng) = merge(1._r8, 0._r8, thk0 * thck(ng) > 0._r8)
           else
-             Sg_icemask(ns)%ptr(ng)              = 0._r8
+             Sg_icemask(ns)%ptr(ng) = 0._r8
              Sg_icemask_coupled_fluxes(ns)%ptr(ng) = 0._r8
-             Sg_topo(ns)%ptr(ng)                 = 0._r8
-             Sg_ice_covered(ns)%ptr(ng)           = 0._r8
+             Sg_topo(ns)%ptr(ng) = 0._r8
+             Sg_ice_covered(ns)%ptr(ng) = 0._r8
           end if
        end do
 
-    end do
+    end do ice_sheet_loop
+
+    ! Zero-fill the CISM-specific export fields (heat flux, runoff, etc.)
+    call glc_noevolve_zero_cism_fields(NStateExp, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call ESMF_LogWrite(subname//' done for '// &
          trim(int_to_str(num_noevolve))//' noevolve ice sheet(s)', ESMF_LOGMSG_INFO)
 
-  end subroutine noevolve_init
+  end subroutine glc_noevolve_init
 
   !===============================================================================
 
-  subroutine noevolve_advance(gcomp, rc)
+  subroutine glc_noevolve_advance(gcomp, rc)
 
     !---------------------------------------------------------------------------
     ! Compute Fgrg_rofi for each noevolve ice sheet from the imported SMB
@@ -297,7 +325,9 @@ contains
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-    do ns = 1, num_noevolve_saved
+    ice_sheet_loop: do ns = 1, num_icesheets_total
+
+       if (trim(get_icesheet_mode(ns)) /= 'noevolve') cycle
 
        lsize = size(Fgrg_rofi(ns)%ptr)
        Fgrg_rofi(ns)%ptr(:) = 0._r8
@@ -341,13 +371,13 @@ contains
           end if
        end do
 
-    end do
+    end do ice_sheet_loop
 
-  end subroutine noevolve_advance
+  end subroutine glc_noevolve_advance
 
   !===============================================================================
 
-  subroutine noevolve_zero_cism_fields(NStateExp, rc)
+  subroutine glc_noevolve_zero_cism_fields(NStateExp, rc)
 
     !---------------------------------------------------------------------------
     ! Zero-fill the CISM-specific export fields (heat flux, ice->seaice runoff,
@@ -367,7 +397,9 @@ contains
 
     rc = ESMF_SUCCESS
 
-    do ns = 1, num_noevolve_saved
+    ice_sheet_loop: do ns = 1, num_noevolve
+
+       if (trim(get_icesheet_mode(ns)) /= 'noevolve') cycle
 
        call dshr_state_getfldptr(NStateExp(ns), fld_out_hflx, fldptr1=ptr, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -393,9 +425,9 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        ptr(:) = 0._r8
 
-    end do
+    end do ice_sheet_loop
 
-  end subroutine noevolve_zero_cism_fields
+  end subroutine glc_noevolve_zero_cism_fields
 
   !===============================================================================
 

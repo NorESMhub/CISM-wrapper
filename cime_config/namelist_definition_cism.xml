@@ -239,7 +239,6 @@ Sub-elements of each entry include:
       <value glc_grid="ais8:gris4">761,421</value>
       <value glc_grid="ais8">761</value>
       <value glc_grid="gris4">421</value>
-      <value glc_grid="gris20">76</value>
     </values>
     <desc>
       Per ice sheet, global x (longitude-like) dimension of the noevolve
@@ -256,7 +255,6 @@ Sub-elements of each entry include:
       <value glc_grid="ais8:gris4">761,721</value>
       <value glc_grid="ais8">761</value>
       <value glc_grid="gris4">721</value>
-      <value glc_grid="gris20">141</value>
     </values>
     <desc>
       Per ice sheet, global y (latitude-like) dimension of the noevolve
@@ -274,7 +272,6 @@ Sub-elements of each entry include:
       <value glc_grid="ais8:gris4">8000.0,4000.0</value>
       <value glc_grid="ais8">8000.0</value>
       <value glc_grid="gris4">4000.0</value>
-      <value glc_grid="gris20">20000.0</value>
     </values>
     <desc>
       Per ice sheet, the internal model grid spacing in meters (for example
