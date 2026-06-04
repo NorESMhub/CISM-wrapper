@@ -73,6 +73,7 @@ module glc_comp_nuopc
   character(len=cs)  :: noevolve_datafiles(max_icesheets_cap)
   integer            :: noevolve_nx(max_icesheets_cap) = 0
   integer            :: noevolve_ny(max_icesheets_cap) = 0
+  real(r8)           :: noevolve_internal_gridsize(max_icesheets_cap) = 0._r8
   integer            :: num_noevolve = 0
 
   ! Tightly-packed (1..num_noevolve) arrays for the noevolve ice sheets.
@@ -189,7 +190,7 @@ contains
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
 
     namelist /cism_hybrid_nml/ icesheet_modes, noevolve_datafiles, &
-         noevolve_nx, noevolve_ny
+         noevolve_nx, noevolve_ny, noevolve_internal_gridsize
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -241,6 +242,8 @@ contains
     call ESMF_VMBroadcast(vm, noevolve_nx,  max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call ESMF_VMBroadcast(vm, noevolve_ny,  max_icesheets_cap, 0, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMBroadcast(vm, noevolve_internal_gridsize, max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Determine if cism will evolve - if not will not import any fields from the mediator
@@ -327,6 +330,7 @@ contains
     integer                 :: glc_io_type
     character(len=cs), allocatable :: noevolve_datafiles_loc(:)
     integer , allocatable          :: noevolve_nx_loc(:), noevolve_ny_loc(:)
+    real(r8), allocatable          :: noevolve_internal_gridsize_loc(:)
     character(*), parameter :: F00   = "('(InitializeRealize) ',8a)"
     character(*), parameter :: F01   = "('(InitializeRealize) ',a,8i8)"
     character(*), parameter :: F91   = "('(InitializeRealize) ',73('-'))"
@@ -565,14 +569,16 @@ contains
        allocate(noevolve_datafiles_loc(num_noevolve))
        allocate(noevolve_nx_loc(num_noevolve))
        allocate(noevolve_ny_loc(num_noevolve))
+       allocate(noevolve_internal_gridsize_loc(num_noevolve))
        ne_idx = 0
        do ns = 1, num_icesheets_total_local
           if (trim(get_icesheet_mode(ns)) == 'noevolve') then
              ne_idx = ne_idx + 1
-             noevolve_meshes(ne_idx)        = mesh(ns)
-             noevolve_datafiles_loc(ne_idx) = noevolve_datafiles(ns)
-             noevolve_nx_loc(ne_idx)        = noevolve_nx(ns)
-             noevolve_ny_loc(ne_idx)        = noevolve_ny(ns)
+             noevolve_meshes(ne_idx)                = mesh(ns)
+             noevolve_datafiles_loc(ne_idx)         = noevolve_datafiles(ns)
+             noevolve_nx_loc(ne_idx)                = noevolve_nx(ns)
+             noevolve_ny_loc(ne_idx)                = noevolve_ny(ns)
+             noevolve_internal_gridsize_loc(ne_idx) = noevolve_internal_gridsize(ns)
           end if
        end do
 
@@ -581,7 +587,8 @@ contains
        glc_io_type       =  shr_pio_getiotype('GLC')
 
        call noevolve_init(num_noevolve, noevolve_NStateExp, noevolve_NStateImp, noevolve_meshes, &
-            noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc, glc_pio_subsystem, glc_io_type, rc)
+            noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc, noevolve_internal_gridsize_loc, &
+            glc_pio_subsystem, glc_io_type, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        ! Zero-fill the CISM-specific export fields (heat flux, runoff, etc.)
@@ -592,7 +599,8 @@ contains
        ! Note: noevolve_NStateExp, noevolve_NStateImp, noevolve_meshes are
        ! deliberately kept allocated for the entire run — they back the field
        ! pointers cached in glc_noevolve_mod.
-       deallocate(noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc)
+       deallocate(noevolve_datafiles_loc, noevolve_nx_loc, noevolve_ny_loc, &
+            noevolve_internal_gridsize_loc)
     end if
 
     !--------------------------------

@@ -11,7 +11,7 @@ module glc_noevolve_mod
   !----------------------------------------------------------------------------
 
   use ESMF             , only : ESMF_State, ESMF_Mesh, ESMF_DistGrid, ESMF_Field
-  use ESMF             , only : ESMF_StateGet, ESMF_FieldGet, ESMF_FieldRegridGetArea
+  use ESMF             , only : ESMF_StateGet, ESMF_FieldGet
   use ESMF             , only : ESMF_FieldBundle, ESMF_FieldBundleCreate, ESMF_FieldCreate
   use ESMF             , only : ESMF_FieldBundleAdd, ESMF_MESHLOC_ELEMENT, ESMF_TYPEKIND_R8
   use ESMF             , only : ESMF_MeshGet, ESMF_DistGridGet
@@ -21,7 +21,7 @@ module glc_noevolve_mod
   use NUOPC            , only : NUOPC_IsConnected
   use shr_kind_mod     , only : r8=>shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
   use shr_log_mod      , only : shr_log_error
-  use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_RHOSW
+  use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_RHOSW, SHR_CONST_REARTH
   use dshr_methods_mod , only : dshr_state_getfldptr, dshr_fldbun_getfldptr, chkerr
   use pio              , only : file_desc_t, io_desc_t, var_desc_t, iosystem_desc_t
   use pio              , only : pio_openfile, pio_inq_varid, pio_inq_varndims, pio_inq_vardimid
@@ -85,26 +85,27 @@ contains
 !===============================================================================
 
   subroutine noevolve_init(num_noevolve, NStateExp, NStateImp, meshes, &
-       datafiles, nx_global, ny_global, pio_subsystem, io_type, rc)
+       datafiles, nx_global, ny_global, internal_gridsize, pio_subsystem, io_type, rc)
 
     !---------------------------------------------------------------------------
     ! Read static topography and thickness for each noevolve ice sheet, compute
     ! the time-invariant export fields (area, topo, ice_covered, masks), and
     ! grab a pointer into the import SMB field used on every coupling step.
     !
-    ! Cell areas are obtained directly from the ESMF mesh via
-    ! ESMF_FieldRegridGetArea (units: radians^2 on a spherical mesh), avoiding
-    ! the need for a user-specified grid spacing in the namelist.
+    ! Cell areas are computed from the user-specified internal grid spacing
+    ! (matching dglc datamode_noevolve convention):
+    !   Sg_area = (internal_gridsize / SHR_CONST_REARTH)**2   ! radians^2
     !---------------------------------------------------------------------------
 
     ! input/output variables
     integer               , intent(in)    :: num_noevolve
-    type(ESMF_State)      , intent(inout) :: NStateExp(:)    ! (num_noevolve)
-    type(ESMF_State)      , intent(inout) :: NStateImp(:)    ! (num_noevolve)
-    type(ESMF_Mesh)       , intent(in)    :: meshes(:)       ! (num_noevolve)
-    character(len=*)      , intent(in)    :: datafiles(:)    ! (num_noevolve)
-    integer               , intent(in)    :: nx_global(:)    ! (num_noevolve)
-    integer               , intent(in)    :: ny_global(:)    ! (num_noevolve)
+    type(ESMF_State)      , intent(inout) :: NStateExp(:)        ! (num_noevolve)
+    type(ESMF_State)      , intent(inout) :: NStateImp(:)        ! (num_noevolve)
+    type(ESMF_Mesh)       , intent(in)    :: meshes(:)           ! (num_noevolve)
+    character(len=*)      , intent(in)    :: datafiles(:)        ! (num_noevolve)
+    integer               , intent(in)    :: nx_global(:)        ! (num_noevolve)
+    integer               , intent(in)    :: ny_global(:)        ! (num_noevolve)
+    real(r8)              , intent(in)    :: internal_gridsize(:) ! [m] (num_noevolve)
     type(iosystem_desc_t) , pointer       :: pio_subsystem
     integer               , intent(in)    :: io_type
     integer               , intent(out)   :: rc
@@ -113,13 +114,11 @@ contains
     type(ESMF_DistGrid)    :: distgrid
     type(ESMF_FieldBundle) :: fldbun
     type(ESMF_Field)       :: field_tmp
-    type(ESMF_Field)       :: area_field
     type(file_desc_t)      :: pioid
     type(io_desc_t)        :: pio_iodesc
     type(var_desc_t)       :: varid
     integer , pointer      :: gindex(:)
     real(r8), pointer      :: topog(:), thck(:)
-    real(r8), pointer      :: area_ptr(:)
     integer                :: ns, ng, lsize, ndims, rcode
     integer , allocatable  :: dimid(:)
     real(r8)               :: rhoi, rhoo, eus, lsrf, usrf
@@ -189,14 +188,12 @@ contains
        call ESMF_DistGridGet(distgrid, localDe=0, seqIndexList=gindex, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-       !--- Cell area (radians^2, constant) — obtained from ESMF mesh ---
-       call ESMF_StateGet(NStateExp(ns), fld_out_area, field=area_field, rc=rc)
-       if (chkerr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_FieldRegridGetArea(area_field, rc=rc)
-       if (chkerr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_FieldGet(area_field, farrayPtr=area_ptr, rc=rc)
-       if (chkerr(rc,__LINE__,u_FILE_u)) return
-       Sg_area(ns)%ptr(:) = area_ptr(:)
+       !--- Cell area (radians^2, constant) ---
+       !    Computed from the user-specified internal grid spacing (matches the
+       !    dglc datamode_noevolve convention).
+       do ng = 1, lsize
+          Sg_area(ns)%ptr(ng) = (internal_gridsize(ns) / SHR_CONST_REARTH)**2
+       end do
 
        !--- Build field bundle to hold topg and thk from file ---
        fldbun = ESMF_FieldBundleCreate(rc=rc)

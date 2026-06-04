@@ -266,6 +266,26 @@ Sub-elements of each entry include:
     </desc>
   </entry>
 
+  <entry id="noevolve_internal_gridsize">
+    <type>real(10)</type>
+    <category>cism</category>
+    <group>cism_hybrid_nml</group>
+    <values>
+      <value glc_grid="ais8:gris4">8000.0,4000.0</value>
+      <value glc_grid="ais8">8000.0</value>
+      <value glc_grid="gris4">4000.0</value>
+      <value glc_grid="gris20">20000.0</value>
+    </values>
+    <desc>
+      Per ice sheet, the internal model grid spacing in meters (for example
+      4000.0 for a 4 km grid). Used to compute the cell area Sg_area in
+      radians^2 via (internal_gridsize / Rearth)**2. Matches the dglc
+      datamode_noevolve convention (variable model_internal_gridsize there).
+      Required for each ice sheet with icesheet_modes='noevolve';
+      ignored otherwise.
+    </desc>
+  </entry>
+
   <!-- =============================================================  -->
   <!-- group: time_manager_nml                                        -->
   <!-- =============================================================  -->
