@@ -816,7 +816,7 @@ Sub-elements of each entry include:
     <valid_values>0,1,2,3</valid_values>
     <values>
       <value icesheet="gris">0</value>
-      <value icesheet="ais">1</value>
+      <value icesheet="ais">2</value>
     </values>
     <desc>
       0: Quadratic parameterization to compute basal melting from thermal forcing
@@ -840,7 +840,7 @@ Sub-elements of each entry include:
       0: ocean data set internally by CISM
       1: ocean data read from external file
       2: ocean data received from coupler via Glad
-      Default: 0 for Greenland, 1 for Antarctica
+      Default: 2 for Greenland, 2 for Antarctica
     </desc>
   </entry>
 
@@ -855,7 +855,7 @@ Sub-elements of each entry include:
     <desc>
       0: CISM will not extrapolate ocean data into cavities
       1: CISM will extrapolate off-shelf ocean data into shelf cavities
-      Default: 0
+      Default: 1
     </desc>
   </entry>
 
@@ -891,7 +891,7 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">3</value>
+      <value icesheet="gris">0</value>
       <value icesheet="ais" >0</value>
     </values>
     <desc>
@@ -915,7 +915,7 @@ Sub-elements of each entry include:
     <desc>
       Multiplier for Rignot frontal melt parameterisation. 
 	  May be used for sampling uncertainty in the parameterisation and to correct for resolution depencence
-      Default: 1.0 
+      Default: 1.0 for Greenland, 0.0 for Antarctica 
     </desc>
   </entry>
 
@@ -974,7 +974,7 @@ Sub-elements of each entry include:
     <desc> Flag that indicates whether or not mask SMB outside present-day grid.
       0=no force retreat, 1=force retreat where indicated by retreat_mask,
       2=force retreat for floating ice where indicated by retreat mask
-      Default: 0 for Greenland, 0 for Antarctica
+      Default: 1 for Greenland, 0 for Antarctica
     </desc>
   </entry>
 
@@ -1026,7 +1026,7 @@ Sub-elements of each entry include:
     <category>cism_config_options</category>
     <group>options</group>
     <values>
-      <value>.true.</value>
+      <value>.false.</value>
     </values>
     <desc>
       If true, then thin marine-based cliffs based on a thickness threshold
@@ -1069,12 +1069,12 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1</valid_values>
     <values>
-      <value>0</value>
+      <value>1</value>
     </values>
     <desc>
       0: Do not calve at initialization
       1: Calve at initialization
-      Default: 0
+      Default: 1
     </desc>
   </entry>
 
@@ -1363,7 +1363,7 @@ Sub-elements of each entry include:
       1 = write after each dynamic time step
       ...
       10 = write every tenth dynamic time step (similarly for other values > 1)
-      Default: 0
+      Default: 1
     </desc>
   </entry>
 
@@ -1442,7 +1442,7 @@ Sub-elements of each entry include:
     </values>
     <desc>
       Thickness scale (in meters) over which gradients increase from zero to full value (HO only)
-      Default: 50. for Greenland, 50. for Antarctica
+      Default: 100. for Greenland, 100. for Antarctica
     </desc>
   </entry>
 
@@ -1632,7 +1632,7 @@ Sub-elements of each entry include:
     <desc>
       Constant geothermal heat flux (W m-2; sign convention is positive down)
       (May be overwritten by a spatially-varying field in input file [bheatflx])
-      Default: 0.
+      Default: -5.e-2
     </desc>
   </entry>
 
@@ -1786,7 +1786,7 @@ Sub-elements of each entry include:
       q = 1: linear sliding law
       q = 0: plastic
       Intermediate values: power law
-      Default: 0.5
+      Default: 0.33
     </desc>
   </entry>
 
@@ -2034,7 +2034,7 @@ Sub-elements of each entry include:
     <desc>
       Parameters for power law, taub_b = C * u_b^(1/m); used for babc options 9, 11 and 12
       Friction coefficient in power law, units of Pa m^(-1/3) yr^(1/3)
-      Default: 1e4 for Greenland, 2e4 for Antarctica
+      Default: 2e4 for Greenland, 2e4 for Antarctica
     </desc>
   </entry>
 
@@ -2078,7 +2078,7 @@ Sub-elements of each entry include:
     <desc>
       Parameters for power law, taub_b = C * u_b^(1/m); used for babc options 9, 11 and 12
       Min value of powerlaw_c, Pa (m/yr)^(-1/3)
-      Default: 100. for Greenland, 10. for Antarctica
+      Default: 10. for Greenland, 100. for Antarctica
     </desc>
   </entry>
 
@@ -2367,7 +2367,7 @@ Sub-elements of each entry include:
       Parameter to limit the min value of beta for various power laws
       Upper limit of ice speed (m/yr) when evaluating powerlaw beta
       Where u > umax, let u = umax when evaluating beta(u).
-      Default: 0.0 for Greenland, 5000. for Antarctica
+      Default: 5000. for Greenland, 5000. for Antarctica
     </desc>
   </entry>
 
@@ -2386,7 +2386,7 @@ Sub-elements of each entry include:
     <desc>
       Number of ocean levels fields for ISMIP6-style ocean data input
       Must be a positive integer
-      Default: 1 for Greenland, 30 for Antarctica
+      Default: 30 for Greenland, 30 for Antarctica
     </desc>
   </entry>
 
@@ -2401,7 +2401,7 @@ Sub-elements of each entry include:
     <desc>
       Thickness of ocean levels (ISMIP6-style ocean data input);
       nonzero value set in config file
-      Default: 0.0 for Greenland, 60. for Antarctica
+      Default: 60.0 for Greenland, 60. for Antarctica
     </desc>
   </entry>
 
@@ -2415,7 +2415,7 @@ Sub-elements of each entry include:
     </values>
     <desc>
       Number of basins (= 16 for IMBIE2) for ISMIP6-style ocean data input
-      Default: 0 for Greenland, 16 for Antarctica
+      Default: 19 for Greenland, 16 for Antarctica
     </desc>
   </entry>
 
@@ -2452,7 +2452,7 @@ Sub-elements of each entry include:
       13: power law using effective pressure
       14: simple hard-coded pattern (useful for debugging)
       15: treat beta value as a till yield stress (in Pa) using Picard iteration
-      Default: 3 for Greenland, 7 for Antarctica
+      Default: 9 for Greenland, 9 for Antarctica
     </desc>
   </entry>
 
@@ -2479,8 +2479,8 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">1</value>
-      <value icesheet="ais" >1</value>
+      <value icesheet="gris">0</value>
+      <value icesheet="ais" >0</value>
     </values>
     <desc>
       Flag for basal inversion options: invert for Cp = powerlaw_c
@@ -2576,7 +2576,7 @@ Sub-elements of each entry include:
       1: Set to constant everywhere, to force T = Tpmp
       2: Local basal till model with constant drainage
       3: Steady-state water routing with flux calculation
-      Default: 2 for Greenland, 0 for Antarctica
+      Default: 0 for Greenland, 0 for Antarctica
     </desc>
   </entry>
 
@@ -2804,7 +2804,7 @@ Sub-elements of each entry include:
       2: Physics-based shallow-ice preconditioner
       3: Local tridiagonal preconditioner (one solve per task)
       4: Global tridiagonal preconditioner (global solve)
-      Default: 1 for Greenland, 3 for Antarctica
+      Default: 3 for Greenland, 3 for Antarctica
     </desc>
   </entry>
 
@@ -2905,7 +2905,7 @@ Sub-elements of each entry include:
       0: f_ground = 0 in floating cells (based on flotation condition), else f_ground = 1
       1: basal friction GLP with 0 .lte. f_ground .lte. 1 at vertices
       2: "deluxe" GLP with f_ground at both cells and vertices; includes both friction and melting
-      Default: 0
+      Default: 2
     </desc>
   </entry>
 
@@ -2922,7 +2922,7 @@ Sub-elements of each entry include:
       0: Apply bmlt_float in all floating cells, based on floating_mask
       1: Do not apply bmlt_float in partly grounded cells
       2: Set bmlt_float = 0 in partly grounded cells (f_ground > 0)
-      Default: 0
+      Default: 1
     </desc>
   </entry>
 
@@ -2942,7 +2942,7 @@ Sub-elements of each entry include:
       1: f_flotation = (rhoi*H)/(-rhow*b) = 1/f_pattyn; &gt;=1 for grounded, &lt; 1 for floating
       2: f_flotation = -rhow*b - rhoi*H = ocean cavity thickness; &lt;=0 for grounded, &gt; 0 for floating
       3: Like (2), but with a correction for topg
-      Default: 3
+      Default: 2
     </desc>
   </entry>
 
@@ -2955,7 +2955,7 @@ Sub-elements of each entry include:
     </values>
     <desc>
       Maximum number of nonlinear iterations to be used by the Glissade velocity solver
-      Default: 50
+      Default: 100
     </desc>
   </entry>
 
@@ -3617,7 +3617,7 @@ Sub-elements of each entry include:
       0: apply spatially uniform mu_star
       1: invert for glacier-specific mu_star
       2: read glacier-specific mu_star from external file
-      Default: 0
+      Default: 1
       A value of 1 is appropriate for glacier spin-up, and a value of 2 for forward runs.
     </desc>
   </entry>
@@ -3634,7 +3634,7 @@ Sub-elements of each entry include:
       0: apply spatially uniform alpha_snow
       1: invert for glacier-specific alpha_snow
       2: read glacier-specific alpha_snow from external file
-      Default: 0
+      Default: 1
       A value of 1 is appropriate for glacier spin-up, and a value of 2 for forward runs.
     </desc>
   </entry>
@@ -3651,7 +3651,7 @@ Sub-elements of each entry include:
       0: apply spatially uniform powerlaw_c
       1: invert for 2D powerlaw_c
       2: read 2D powerlaw_c from external file
-      Default: 0
+      Default: 1
       A value of 1 is appropriate for glacier spin-up, and a value of 2 for forward runs.
     </desc>
   </entry>
@@ -4047,7 +4047,7 @@ Sub-elements of each entry include:
     <desc>
       End time of simulation (yr)
       Not used in CESM coupled runs, but usually needed for standalone
-      Default: 1000.0
+      Default: 10000.0
     </desc>
   </entry>
 
