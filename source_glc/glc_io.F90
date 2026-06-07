@@ -42,6 +42,8 @@
              glc_io_write_history_tavg_helper, &
              glc_io_write_restart
 
+   public :: glc_filename 
+
 ! !PRIVATE MEMBER DATA:
 
    ! Baseline year to use for time units - i.e., the year to use in the string,
@@ -57,7 +59,6 @@
 !***********************************************************************
 
  contains
-
 !***********************************************************************
 !BOP
 ! !IROUTINE: glc_io_read_restart_time
@@ -381,8 +382,7 @@
 
 !***********************************************************************
 !BOP
-! !IROUTINE: glc_io_write_restart
-! !INTERFACE:
+! !IROUTINE: glc_io_write_restart! !INTERFACE:
 
    subroutine glc_io_write_restart(instance, icesheet_name, EClock)
 

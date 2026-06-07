@@ -227,7 +227,7 @@ Sub-elements of each entry include:
       Per ice sheet, full path to the static NetCDF file containing the
       bedrock topography ('topg') and ice thickness ('thk') used for
       noevolve mode. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored for 'prognostic' ice sheets.
+      icesheet_mode='noevolve'; ignored for 'prognostic' ice sheets.
     </desc>
   </entry>
 
@@ -243,7 +243,7 @@ Sub-elements of each entry include:
     <desc>
       Per ice sheet, global x (longitude-like) dimension of the noevolve
       data file. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored otherwise.
+      icesheet_mode='noevolve'; ignored otherwise.
     </desc>
   </entry>
 
@@ -259,7 +259,7 @@ Sub-elements of each entry include:
     <desc>
       Per ice sheet, global y (latitude-like) dimension of the noevolve
       data file. Required for each ice sheet with
-      icesheet_modes='noevolve'; ignored otherwise.
+      icesheet_mode='noevolve'; ignored otherwise.
       Default: 0
     </desc>
   </entry>
@@ -278,7 +278,7 @@ Sub-elements of each entry include:
       4000.0 for a 4 km grid). Used to compute the cell area Sg_area in
       radians^2 via (internal_gridsize / Rearth)**2. Matches the dglc
       datamode_noevolve convention (variable model_internal_gridsize there).
-      Required for each ice sheet with icesheet_modes='noevolve';
+      Required for each ice sheet with icesheet_mode='noevolve';
       ignored otherwise.
     </desc>
   </entry>

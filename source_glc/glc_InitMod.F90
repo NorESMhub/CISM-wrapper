@@ -265,6 +265,8 @@
             tmp_names(n_prog) = icesheet_names(k)
          end if
       end do
+
+      ! Reset num_icesheets to be only the number of prognostic icesheets
       num_icesheets = n_prog
       icesheet_names(:) = tmp_names(:)
       if (my_task == master_task) then

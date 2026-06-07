@@ -7,6 +7,7 @@ module glc_comp_nuopc
   use ESMF
   use NUOPC               , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
   use NUOPC               , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
+  use NUOPC               , only : NUOPC_AddNestedState
   use NUOPC_Model         , only : model_routine_SS           => SetServices
   use NUOPC_Model         , only : SetVM
   use NUOPC_Model         , only : model_routine_Run          => routine_Run
@@ -20,7 +21,8 @@ module glc_comp_nuopc
   use shr_kind_mod        , only : r8 => shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
   use shr_string_mod      , only : shr_string_listGetNum, shr_string_listGetName
   use glc_import_export   , only : advertise_fields, realize_fields, export_fields, import_fields
-  use glc_import_export   , only : get_num_icesheets, get_num_icesheets_total, get_icesheet_mode
+  use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
+  use glc_import_export   , only : flds_scalar_name, flds_scalar_num
   use glc_constants       , only : verbose, stdout, model_doi_url, num_icesheets, icesheet_names
   use glc_noevolve_mod    , only : glc_noevolve_init, glc_noevolve_advance
   use glc_InitMod         , only : glc_initialize
@@ -31,14 +33,15 @@ module glc_comp_nuopc
   use glc_time_management , only : iyear,imonth,iday,ihour,iminute,isecond,runtype
   use glc_fields          , only : ice_sheet
   use glc_indexing        , only : local_to_global_indices
-  use glc_indexing        , only : get_npts, get_nx, get_ny, spatial_to_vector
+  use glc_indexing        , only : get_npts, get_nx, get_ny, spatial_to_vector, get_nx_tot, get_ny_tot
   use glc_ensemble        , only : set_inst_vars
   use glc_files           , only : set_filenames, ionml_filename, nml_filename
   use glad_main           , only : glad_get_lat_lon
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
   use perf_mod            , only : t_startf, t_stopf, t_barrierf
-!$ use omp_lib            , only : omp_set_num_threads
+
+  !$ use omp_lib            , only : omp_set_num_threads
   implicit none
   private ! except
 
@@ -63,14 +66,20 @@ module glc_comp_nuopc
   integer                    :: nthrds  ! Number of openMP threads per mpi task
   character(len=*),parameter :: modName =  "(glc_comp_nuopc)"
 
-  ! Hybrid (prognostic + noevolve) configuration — read from cism_hybrid_nml
+  ! Hybrid (prognostic + noevolve) configuration read from cism_hybrid_nml
   integer, parameter :: max_icesheets_cap  = 10
-  character(len=cs)  :: icesheet_modes(max_icesheets_cap) = 'prognostic'
-  character(len=cs)  :: noevolve_datafiles(max_icesheets_cap)
+  character(len=16)  :: icesheet_modes(max_icesheets_cap) = 'prognostic'
+  character(len=CL)  :: noevolve_datafiles(max_icesheets_cap)
   integer            :: noevolve_nx(max_icesheets_cap) = 0
   integer            :: noevolve_ny(max_icesheets_cap) = 0
   real(r8)           :: noevolve_internal_gridsize(max_icesheets_cap) = 0._r8
   integer            :: num_noevolve = 0
+  integer            :: num_prognostic = 0
+  integer            :: prognostic_index(max_icesheets_cap) ! prognostic ice sheet index -> CISM index (0 = noevolve)
+  integer            :: num_icesheets_from_mediator = 0 ! number of icesheets from the mediator
+
+  type(ESMF_State), allocatable :: NStateImp(:)
+  type(ESMF_State), allocatable :: NStateExp(:)
 
   character(len=*),parameter :: u_FILE_u = &
        __FILE__
@@ -161,19 +170,20 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
+    type(ESMF_State)       :: importState_loc, exportState_loc
     type(ESMF_VM)          :: vm
     character(ESMF_MAXSTR) :: cvalue
     logical                :: isPresent, isSet
     integer                :: localpet
     integer                :: shrlogunit  ! original log unit
-    integer                :: i,j,n
+    integer                :: i,j,n, ns
     integer                :: nml_unit    ! unit for namelist file
     integer                :: nml_error   ! namelist read error flag
+    character(len=CS)      :: cnum
     character(len=CL)      :: logmsg
     integer                :: inst_index    ! number of current instance
     character(len=16)      :: inst_suffix   ! character string associated with instance number
     logical                :: glc_coupled_fluxes ! are we sending fluxes to other components?
-    integer                :: num_icesheets_from_mediator ! number of icesheets in this run
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     namelist /cism_hybrid_nml/ icesheet_modes, noevolve_datafiles, &
@@ -218,10 +228,10 @@ contains
              read(nml_unit, nml=cism_hybrid_nml, iostat=nml_error)
           end do
           close(nml_unit)
-          ! nml_error < 0 means group not found — that's fine, defaults remain
+          ! nml_error < 0 means group not found that's fine, defaults remain
        end if
     end if
-    call ESMF_VMBroadcast(vm, icesheet_modes, cs*max_icesheets_cap, 0, rc=rc)
+    call ESMF_VMBroadcast(vm, icesheet_modes, 16*max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call ESMF_VMBroadcast(vm, noevolve_datafiles, cs*max_icesheets_cap, 0, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -238,11 +248,42 @@ contains
     num_icesheets_from_mediator = shr_string_listGetNum(mesh_glc_list)
     if (my_task == master_task) then
        write(stdout,'(a,i4)')'number of ice sheets (total) is ',num_icesheets_from_mediator
+       do ns = 1,num_icesheets_from_mediator
+          write(stdout,'(a,i4,a,a)')' icesheet_modes for ice_sheet ',ns,' = ',icesheet_modes(ns)
+       end do
     end if
 
-    ! Advertise fields — pass per-ice-sheet modes so import_export builds the mapping
-    call advertise_fields(gcomp, num_icesheets_from_mediator, &
-         icesheet_modes(1:num_icesheets_from_mediator), rc)
+    ! Determine number of prognostic ice sheet and prognostic indexing
+    num_prognostic = 0
+    num_noevolve = 0
+    prognostic_index(:) = 0
+    do ns = 1, num_icesheets_from_mediator
+       if (trim(icesheet_modes(ns)) == 'prognostic') then
+          num_prognostic = num_prognostic + 1
+          prognostic_index(ns) = num_prognostic
+       else if (trim(icesheet_modes(ns)) == 'noevolve') then
+          num_noevolve = num_noevolve + 1
+       else
+          call shr_sys_abort('icesheet_modes can only be prognostic or noevolve') 
+       end if
+    end do
+
+    ! Create nested state
+    allocate(NStateImp(num_icesheets_from_mediator))
+    allocate(NStateExp(num_icesheets_from_mediator))
+    call NUOPC_ModelGet(gcomp, importState=importState_loc, exportState=exportState_loc, rc=rc)
+    if (chkErr(rc,__LINE__,u_FILE_u)) return
+    do ns = 1,num_icesheets_from_mediator
+       write(cnum,'(i0)') ns
+       call NUOPC_AddNestedState(importState_loc, CplSet="GLC"//trim(cnum), nestedState=NStateImp(ns), rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call NUOPC_AddNestedState(exportState_loc, CplSet="GLC"//trim(cnum), nestedState=NStateExp(ns), rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end do
+
+    ! Advertise fields
+    call advertise_fields(gcomp, num_icesheets_from_mediator, icesheet_modes(1:num_icesheets_from_mediator), &
+         NStateImp, NStateExp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (dbug > 5) then
@@ -297,13 +338,8 @@ contains
     integer                 :: i,j,ns
     integer                 :: npts,nx,ny
     integer, allocatable    :: gindex(:)
-    integer                 :: num_icesheets_from_mediator
-    integer                 :: num_icesheets_total
     integer                 :: cism_idx                 ! running CISM instance index within the mesh loop
     integer                 :: ne_idx                   ! running noevolve index within the mesh loop
-    character(len=cs), allocatable :: noevolve_datafiles(:)
-    integer , allocatable          :: noevolve_nx(:), noevolve_ny(:)
-    real(r8), allocatable          :: noevolve_internal_gridsize(:)
     character(*), parameter :: F00 = "('(InitializeRealize) ',8a)"
     character(*), parameter :: F01 = "('(InitializeRealize) ',a,8i8)"
     character(*), parameter :: F91 = "('(InitializeRealize) ',73('-'))"
@@ -381,46 +417,42 @@ contains
        call shr_sys_abort( subname//'ERROR:: bad calendar for ESMF' )
     end if
 
-    ! Initialize GLC — pass icesheet_modes so CISM only initializes the
+    ! Initialize GLC pass icesheet_modes so CISM only initializes the
     ! 'prognostic' subset; 'noevolve' entries are handled later by glc_noevolve_mod
-    call glc_initialize(clock, icesheet_modes_in=icesheet_modes(1:get_num_icesheets_total()))
+    call glc_initialize(clock, icesheet_modes_in=icesheet_modes(1:num_icesheets_from_mediator))
     if (my_task == master_task) then
        write(stdout,F01) ' GLC Initial Date ',iyear,imonth,iday,ihour,iminute,isecond
        write(stdout,F00) ' Initialize Done'
     endif
 
+    ! Consistency checks
+    if (num_prognostic /= num_icesheets) then
+       write(stdout,*) 'num_prognostic: ', num_prognostic
+       write(stdout,*) 'num_icesheets from cism namelist: ', num_icesheets
+       call shr_sys_abort('num_prognostic ice sheets differs from number set in cism namelist')
+    end if
+
+    if (my_task == master_task) then
+       write(stdout,'(a,a,i0)') subname, ' Number of noevolve   icesheets is ',num_noevolve
+       write(stdout,'(a,a,i0)') subname, ' Number of prognostic icesheets is ',num_prognostic
+    end if
+
     !--------------------------------
     ! Realize the actively coupled fields
     !--------------------------------
 
-    ! Consistency checks
-
-    ! After glc_initialize filtered by icesheet_modes:
-    ! - num_icesheets (glc_constants) = number of *prognostic* ice sheets
-    ! - num_icesheets_total = total number of ice sheets (prognostic + noevolve)
-    num_icesheets_from_mediator = get_num_icesheets_total()
-    num_icesheets_total  = num_icesheets_from_mediator
-
-    ! Sanity check: prognostic count from cap mapping must equal prognostic
-    ! count CISM ended up with after filtering.
-    if (get_num_icesheets() /= num_icesheets) then
-       write(stdout,*) 'num prognostic from cap mapping:    ', get_num_icesheets()
-       write(stdout,*) 'num prognostic after CISM filter:   ', num_icesheets
-       call shr_sys_abort('num prognostic ice sheets in cap mapping differs from CISM filter result')
-    end if
-
-    ! Allocate and read in mesh array — one entry per ice sheet (prognostic + noevolve)
-    allocate(DistGrid(num_icesheets_total))
-    allocate(mesh(num_icesheets_total))
+    ! Allocate and read in mesh array one entry per ice sheet (prognostic + noevolve)
+    allocate(DistGrid(num_icesheets_from_mediator))
+    allocate(mesh(num_icesheets_from_mediator))
     cism_idx = 0
-    do ns = 1, num_icesheets_total
+    do ns = 1, num_icesheets_from_mediator
        call shr_string_listGetName(mesh_glc_list, ns, mesh_glc_filename)
        if (my_task == master_task) then
           write(stdout,'(a,i4,a,a,a,a)') 'mesh file for ice_sheet_domain ',ns, &
-               ' (',trim(get_icesheet_mode(ns)),') is ',trim(mesh_glc_filename)
+               ' (',trim(icesheet_modes(ns)),') is ',trim(mesh_glc_filename)
        end if
 
-       if (trim(get_icesheet_mode(ns)) == 'prognostic') then
+       if (trim(icesheet_modes(ns)) == 'prognostic') then
           ! Build DistGrid from CISM's decomposition for prognostic ice sheets
           cism_idx = cism_idx + 1
           gindex = local_to_global_indices(instance_index=cism_idx)
@@ -439,7 +471,7 @@ contains
     end do
 
     ! Realize the actively coupled fields (all ice sheets)
-    call realize_fields(gcomp, mesh, rc)
+    call realize_fields(gcomp, mesh, NStateImp, NStateExp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
@@ -447,9 +479,9 @@ contains
     !--------------------------------
 
     cism_idx = 0
-    do ns = 1, num_icesheets_total
-       ! Skip noevolve ice sheets — CISM holds no internal lat/lon for them
-       if (trim(get_icesheet_mode(ns)) == 'noevolve') cycle
+    do ns = 1, num_icesheets_from_mediator
+       ! Skip noevolve ice sheet CISM holds no internal lat/lon for them
+       if (trim(icesheet_modes(ns)) == 'noevolve') cycle
        cism_idx = cism_idx + 1
 
        npts = get_npts(instance_index=cism_idx)
@@ -510,14 +542,8 @@ contains
     ! ESMF fields exist, and before the first export_fields call.
     !--------------------------------
 
-    num_noevolve = 0
-    do ns = 1, num_icesheets_total
-       if (trim(get_icesheet_mode(ns)) == 'noevolve') then
-          num_noevolve = num_noevolve + 1
-       end if
-    end do
     if (num_noevolve > 0) then
-       call glc_noevolve_init(NStateExp, NStateImp, mesh, &
+       call glc_noevolve_init(NStateExp, NStateImp, mesh, icesheet_modes, &
             noevolve_datafiles, noevolve_nx, noevolve_ny, noevolve_internal_gridsize, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
@@ -526,30 +552,23 @@ contains
     ! Set scalars in export state
     !--------------------------------
 
-    do ns = 1, num_icesheets_total
-       if (trim(get_icesheet_mode(ns)) == 'noevolve') then
+    do ns = 1, num_icesheets_from_mediator
+       if (trim(icesheet_modes(ns)) == 'noevolve') then
           call State_SetScalar(dble(noevolve_nx(ns)), flds_scalar_index_nx, &
                NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           call State_SetScalar(dble(noevolve_ny(ns)), flds_scalar_index_ny, &
                NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       else
-          call State_SetScalar(dble(get_nx_tot(instance_index=ns)), flds_scalar_index_nx, &
-               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
-          call State_SetScalar(dble(get_ny_tot(instance_index=ns)), flds_scalar_index_ny, &
-               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
     end do
 
     !--------------------------------
-    ! Create glc export state — fills prognostic ice sheet fields; noevolve fields
+    ! Create glc export state prognostic ice sheet fields; noevolve fields
     ! were filled above by noevolve_init and are owned by glc_noevolve_mod.
     !--------------------------------
 
-    call export_fields(exportState, rc=rc)
+    call export_fields(icesheet_modes, prognostic_index, NStateExp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Write diagnostics if appropriate
@@ -653,7 +672,7 @@ contains
     ! Unpack import state
     !--------------------------------
 
-    call import_fields(rc)
+    call import_fields(icesheet_modes, prognostic_index, NStateImp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
@@ -703,12 +722,13 @@ contains
     enddo
 
     !--------------------------------
-    ! Advance noevolve ice sheets (if any) — computes Fgrg_rofi from imported SMB.
+    ! Advance noevolve ice sheets (if any) computes Fgrg_rofi from imported SMB.
     ! Must run after import_fields so Flgl_qice is fresh.
+    ! This sets export field data for no evolve ice sheets
     !--------------------------------
 
     if (num_noevolve > 0) then
-       call glc_noevolve_advance(gcomp, rc)
+       call glc_noevolve_advance(rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
@@ -716,13 +736,14 @@ contains
     ! Pack export state if appropriate (prognostic fields; noevolve already in place)
     !--------------------------------
 
-    call export_fields(exportState, rc)
+    call export_fields(icesheet_modes, prognostic_index, NStateExp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! If time to write restart, do so
     call ESMF_ClockGetAlarm(clock, alarmname='alarm_restart', alarm=alarm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
+       ! TODO: add the restart read and restart write from dglc
        do ns = 1, num_icesheets
           call glc_io_write_restart(ice_sheet%instances(ns), icesheet_names(ns), clock)
        end do
