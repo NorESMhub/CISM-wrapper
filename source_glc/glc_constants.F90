@@ -51,7 +51,8 @@
   integer :: num_icesheets = 0  ! number of ice sheets in this run
 
   integer, parameter :: icesheet_name_len = 32
-  character(icesheet_name_len) :: icesheet_names(max_icesheets)
+  character(icesheet_name_len) :: icesheet_names(max_icesheets)       ! prognostic icesheet names
+  character(icesheet_name_len) :: icesheet_names_total(max_icesheets) ! prognostic + noevolve icesheet names
 
    !-----------------------------------------------------------------
    ! elevation class info

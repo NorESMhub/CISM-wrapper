@@ -23,8 +23,9 @@ module glc_comp_nuopc
   use glc_import_export   , only : advertise_fields, realize_fields, export_fields, import_fields
   use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
   use glc_import_export   , only : flds_scalar_name, flds_scalar_num
-  use glc_constants       , only : verbose, stdout, model_doi_url, num_icesheets, icesheet_names
-  use glc_noevolve_mod    , only : glc_noevolve_init, glc_noevolve_advance
+  use glc_constants       , only : verbose, stdout, model_doi_url
+  use glc_constants       , only : num_icesheets, icesheet_names, icesheet_names_total
+  use glc_noevolve_mod    , only : glc_noevolve_init, glc_noevolve_advance, glc_noevolve_restart_write
   use glc_InitMod         , only : glc_initialize
   use glc_RunMod          , only : glc_run
   use glc_FinalMod        , only : glc_final
@@ -75,7 +76,7 @@ module glc_comp_nuopc
   real(r8)           :: noevolve_internal_gridsize(max_icesheets_cap) = 0._r8
   integer            :: num_noevolve = 0
   integer            :: num_prognostic = 0
-  integer            :: prognostic_index(max_icesheets_cap) ! prognostic ice sheet index -> CISM index (0 = noevolve)
+  integer            :: prognostic_index(max_icesheets_cap) ! prognostic ice sheet index -> CISM index
   integer            :: num_icesheets_from_mediator = 0 ! number of icesheets from the mediator
 
   type(ESMF_State), allocatable :: NStateImp(:)
@@ -264,7 +265,7 @@ contains
        else if (trim(icesheet_modes(ns)) == 'noevolve') then
           num_noevolve = num_noevolve + 1
        else
-          call shr_sys_abort('icesheet_modes can only be prognostic or noevolve') 
+          call shr_sys_abort('icesheet_modes can only be prognostic or noevolve')
        end if
     end do
 
@@ -661,7 +662,7 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call ESMF_TimeGet( NextTime, yy=cesmYR, mm=cesmMON, dd=cesmDAY, s=cesmTOD, rc=rc )
-    if ( rc /= ESMF_SUCCESS ) call shr_sys_abort("ERROR: glc_io_write_restart")
+    if ( rc /= ESMF_SUCCESS ) call shr_sys_abort("ERROR: "//subname)
 
     call shr_cal_ymd2date(cesmYR, cesmMON, cesmDAY, cesmYMD)
     if (my_task == master_task) then
@@ -743,9 +744,13 @@ contains
     call ESMF_ClockGetAlarm(clock, alarmname='alarm_restart', alarm=alarm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
-       ! TODO: add the restart read and restart write from dglc
-       do ns = 1, num_icesheets
-          call glc_io_write_restart(ice_sheet%instances(ns), icesheet_names(ns), clock)
+       do ns = 1, num_icesheets_from_mediator
+          if (trim(icesheet_modes(ns)) == 'prognostic') then
+             call glc_io_write_restart(ice_sheet%instances(prognostic_index(ns)), icesheet_names(prognostic_index(ns)), clock)
+          else
+             call glc_noevolve_restart_write(icesheet_names_total(ns), ns, noevolve_nx(ns), noevolve_ny(ns), clock, rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          end if
        end do
        call ESMF_AlarmRingerOff( alarm, rc=rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return

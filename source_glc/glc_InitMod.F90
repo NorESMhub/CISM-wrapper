@@ -27,7 +27,7 @@
                                   ihour,  iminute, isecond, nsteps_total, &
                                   ymd2eday, eday2ymd, runtype
    use glc_constants, only: stdout, zero_gcm_fluxes_for_all_icesheets, test_coupling, enable_frac_overrides, &
-                            max_icesheets, num_icesheets, icesheet_names
+                            max_icesheets, num_icesheets, icesheet_names, icesheet_names_total
    use glc_io,        only: glc_io_read_restart_time
    use glc_files,     only: nml_filename
    use glc_exit_mod, only : exit_glc, sigAbort
@@ -250,6 +250,9 @@
    call broadcast_scalar(test_coupling,     master_task)
    call broadcast_scalar(enable_frac_overrides, master_task)
    call set_routing(ice_flux_routing)
+
+   ! Set icesheet names for prognostic plus noeolve icesheets
+   icesheet_names_total(:) = icesheet_names(:)
 
    ! If icesheet_modes_in is provided, filter num_icesheets and icesheet_names
    ! down to only the 'prognostic' subset.  CISM internals (this module and
