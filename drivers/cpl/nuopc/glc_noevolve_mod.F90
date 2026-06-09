@@ -36,6 +36,7 @@ module glc_noevolve_mod
   use pio              , only : pio_seterrorhandling
   use shr_pio_mod      , only : shr_pio_getiosys, shr_pio_getiotype
   use glc_io           , only : glc_filename
+  use glc_files        , only : get_rpointer_filename
   use glc_constants    , only : stdout
   use glc_communicate  , only : my_task, master_task
 
@@ -543,6 +544,7 @@ contains
     type(ESMF_Time)     :: CurrentTime
     type(var_desc_t)    :: varid
     type(io_desc_t)     :: pio_iodesc
+    integer             :: ptr_unit
     character(len=*), parameter :: subname = '(glc_noevolve_mod:noevolve_restart_write) '
     !-------------------------------------------------------------------------------
 
@@ -574,6 +576,13 @@ contains
     call pio_write_darray(pioid, varid, pio_iodesc, Fgrg_rofi(icesheet_index)%ptr, rcode, fillval=shr_const_spval)
     call pio_closefile(pioid)
     call pio_freedecomp(pio_subsystem, pio_iodesc)
+
+    ! write pointer to restart file
+    if (my_task == master_task) then
+       open(newunit=ptr_unit, file=get_rpointer_filename(icesheet_name, yr, mon, day, tod, .false.))
+       write(ptr_unit,'(a)') trim(rest_file)
+       close(ptr_unit)
+    endif
 
   end subroutine glc_noevolve_restart_write
 
