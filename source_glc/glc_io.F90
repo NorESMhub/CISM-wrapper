@@ -90,15 +90,13 @@
     if (my_task == master_task) then
        modelymd = yr*10000+mon*100+day
        ! get restart filename from rpointer file
-       ptr_unit = shr_file_getUnit()
-       open(ptr_unit,file=get_rpointer_filename(icesheet_name, yr, mon, day, tod, .true.))
+       open(newunit=ptr_unit, file=get_rpointer_filename(icesheet_name, yr, mon, day, tod, .true.))
        read(ptr_unit,'(a)') filename0
        filename = trim(filename0)
        close(ptr_unit)
        write(stdout,*) &
             'glc_io_read_restart_time: using dumpfile for restart = ', filename
        call shr_sys_flush(stdout)
-       call shr_file_freeunit(ptr_unit)
 
        ! read time from the restart file, since CISM needs this to initialize
        rst_unit = shr_file_getUnit()

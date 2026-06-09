@@ -24,7 +24,7 @@ module glc_comp_nuopc
   use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
   use glc_import_export   , only : flds_scalar_name, flds_scalar_num
   use glc_constants       , only : verbose, stdout, model_doi_url
-  use glc_constants       , only : num_icesheets, icesheet_names, icesheet_names_total
+  use glc_constants       , only : num_icesheets, icesheet_names, icesheet_names_total, icesheet_modes
   use glc_noevolve_mod    , only : glc_noevolve_init, glc_noevolve_advance, glc_noevolve_restart_write
   use glc_InitMod         , only : glc_initialize
   use glc_RunMod          , only : glc_run
@@ -42,7 +42,7 @@ module glc_comp_nuopc
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
   use perf_mod            , only : t_startf, t_stopf, t_barrierf
 
-  !$ use omp_lib            , only : omp_set_num_threads
+  !$ use omp_lib          , only : omp_set_num_threads
   implicit none
   private ! except
 
@@ -69,15 +69,10 @@ module glc_comp_nuopc
 
   ! Hybrid (prognostic + noevolve) configuration read from cism_hybrid_nml
   integer, parameter :: max_icesheets_cap  = 10
-  character(len=16)  :: icesheet_modes(max_icesheets_cap) = 'prognostic'
-  character(len=CL)  :: noevolve_datafiles(max_icesheets_cap)
-  integer            :: noevolve_nx(max_icesheets_cap) = 0
-  integer            :: noevolve_ny(max_icesheets_cap) = 0
-  real(r8)           :: noevolve_internal_gridsize(max_icesheets_cap) = 0._r8
   integer            :: num_noevolve = 0
   integer            :: num_prognostic = 0
+  integer            :: num_icesheets_from_mediator = 0     ! number of icesheets from the mediator
   integer            :: prognostic_index(max_icesheets_cap) ! prognostic ice sheet index -> CISM index
-  integer            :: num_icesheets_from_mediator = 0 ! number of icesheets from the mediator
 
   type(ESMF_State), allocatable :: NStateImp(:)
   type(ESMF_State), allocatable :: NStateExp(:)
@@ -187,8 +182,6 @@ contains
     logical                :: glc_coupled_fluxes ! are we sending fluxes to other components?
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
-    namelist /cism_hybrid_nml/ icesheet_modes, noevolve_datafiles, &
-         noevolve_nx, noevolve_ny, noevolve_internal_gridsize
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -219,30 +212,6 @@ contains
     ! Set filenames which depend on instance information
     call set_filenames()
 
-    ! Read cism_hybrid_nml from the CISM namelist file to determine per-ice-sheet modes.
-    ! Only the master task reads; values are broadcast to all tasks below.
-    if (my_task == master_task) then
-       open(newunit=nml_unit, file=trim(nml_filename), status='old', iostat=nml_error)
-       if (nml_error == 0) then
-          nml_error = 1
-          do while (nml_error > 0)
-             read(nml_unit, nml=cism_hybrid_nml, iostat=nml_error)
-          end do
-          close(nml_unit)
-          ! nml_error < 0 means group not found that's fine, defaults remain
-       end if
-    end if
-    call ESMF_VMBroadcast(vm, icesheet_modes, 16*max_icesheets_cap, 0, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMBroadcast(vm, noevolve_datafiles, cs*max_icesheets_cap, 0, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMBroadcast(vm, noevolve_nx,  max_icesheets_cap, 0, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMBroadcast(vm, noevolve_ny,  max_icesheets_cap, 0, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMBroadcast(vm, noevolve_internal_gridsize, max_icesheets_cap, 0, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     ! Get colon delimited string of mesh filenames
     call NUOPC_CompAttributeGet(gcomp, name='mesh_glc', value=mesh_glc_list, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -253,21 +222,6 @@ contains
           write(stdout,'(a,i4,a,a)')' icesheet_modes for ice_sheet ',ns,' = ',icesheet_modes(ns)
        end do
     end if
-
-    ! Determine number of prognostic ice sheet and prognostic indexing
-    num_prognostic = 0
-    num_noevolve = 0
-    prognostic_index(:) = 0
-    do ns = 1, num_icesheets_from_mediator
-       if (trim(icesheet_modes(ns)) == 'prognostic') then
-          num_prognostic = num_prognostic + 1
-          prognostic_index(ns) = num_prognostic
-       else if (trim(icesheet_modes(ns)) == 'noevolve') then
-          num_noevolve = num_noevolve + 1
-       else
-          call shr_sys_abort('icesheet_modes can only be prognostic or noevolve')
-       end if
-    end do
 
     ! Create nested state
     allocate(NStateImp(num_icesheets_from_mediator))
@@ -283,8 +237,7 @@ contains
     end do
 
     ! Advertise fields
-    call advertise_fields(gcomp, num_icesheets_from_mediator, icesheet_modes(1:num_icesheets_from_mediator), &
-         NStateImp, NStateExp, rc)
+    call advertise_fields(gcomp, num_icesheets_from_mediator, NStateImp, NStateExp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (dbug > 5) then
@@ -340,7 +293,6 @@ contains
     integer                 :: npts,nx,ny
     integer, allocatable    :: gindex(:)
     integer                 :: cism_idx                 ! running CISM instance index within the mesh loop
-    integer                 :: ne_idx                   ! running noevolve index within the mesh loop
     character(*), parameter :: F00 = "('(InitializeRealize) ',8a)"
     character(*), parameter :: F01 = "('(InitializeRealize) ',a,8i8)"
     character(*), parameter :: F91 = "('(InitializeRealize) ',73('-'))"
@@ -420,11 +372,26 @@ contains
 
     ! Initialize GLC pass icesheet_modes so CISM only initializes the
     ! 'prognostic' subset; 'noevolve' entries are handled later by glc_noevolve_mod
-    call glc_initialize(clock, icesheet_modes_in=icesheet_modes(1:num_icesheets_from_mediator))
+    call glc_initialize(clock)
     if (my_task == master_task) then
        write(stdout,F01) ' GLC Initial Date ',iyear,imonth,iday,ihour,iminute,isecond
        write(stdout,F00) ' Initialize Done'
     endif
+
+    ! Determine number of prognostic ice sheet and prognostic indexing
+    num_prognostic = 0
+    num_noevolve = 0
+    prognostic_index(:) = 0
+    do ns = 1, num_icesheets_from_mediator
+       if (trim(icesheet_modes(ns)) == 'prognostic') then
+          num_prognostic = num_prognostic + 1
+          prognostic_index(ns) = num_prognostic
+       else if (trim(icesheet_modes(ns)) == 'noevolve') then
+          num_noevolve = num_noevolve + 1
+       else
+          call shr_sys_abort('icesheet_modes can only be prognostic or noevolve')
+       end if
+    end do
 
     ! Consistency checks
     if (num_prognostic /= num_icesheets) then
@@ -544,25 +511,9 @@ contains
     !--------------------------------
 
     if (num_noevolve > 0) then
-       call glc_noevolve_init(NStateExp, NStateImp, mesh, icesheet_modes, &
-            noevolve_datafiles, noevolve_nx, noevolve_ny, noevolve_internal_gridsize, rc)
+       call glc_noevolve_init(NStateExp, NStateImp, mesh, clock, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
-
-    !--------------------------------
-    ! Set scalars in export state
-    !--------------------------------
-
-    do ns = 1, num_icesheets_from_mediator
-       if (trim(icesheet_modes(ns)) == 'noevolve') then
-          call State_SetScalar(dble(noevolve_nx(ns)), flds_scalar_index_nx, &
-               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
-          call State_SetScalar(dble(noevolve_ny(ns)), flds_scalar_index_ny, &
-               NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       end if
-    end do
 
     !--------------------------------
     ! Create glc export state prognostic ice sheet fields; noevolve fields
@@ -748,7 +699,7 @@ contains
           if (trim(icesheet_modes(ns)) == 'prognostic') then
              call glc_io_write_restart(ice_sheet%instances(prognostic_index(ns)), icesheet_names(prognostic_index(ns)), clock)
           else
-             call glc_noevolve_restart_write(icesheet_names_total(ns), ns, noevolve_nx(ns), noevolve_ny(ns), clock, rc)
+             call glc_noevolve_restart_write(ns, clock, rc)
              if (ChkErr(rc,__LINE__,u_FILE_u)) return
           end if
        end do

@@ -25,7 +25,6 @@ module glc_import_export
   public  :: realize_fields
   public  :: import_fields
   public  :: export_fields
-  public  :: get_num_icesheets
 
   private :: fldlist_add
   private :: fldlist_realize
@@ -74,7 +73,7 @@ module glc_import_export
   type (fld_list_type)   :: fldsToGlc(fldsMax)
   type (fld_list_type)   :: fldsFrGlc(fldsMax)
 
-  integer :: num_icesheets       ! total ice sheets (prognostic + noevolve)
+  integer :: num_icesheets ! total ice sheets (prognostic + noevolve)
   integer :: dbug_flag = 0
 
   character(*), parameter :: u_FILE_u = &
@@ -84,14 +83,13 @@ module glc_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, num_icesheets_in, icesheet_modes, NStateImp, NStateExp, rc)
+  subroutine advertise_fields(gcomp, num_icesheets_in, NStateImp, NStateExp, rc)
 
     use glc_constants, only : glc_smb
 
     ! input/output variables
     type(ESMF_GridComp)              :: gcomp
     integer          , intent(in)    :: num_icesheets_in
-    character(len=*) , intent(in)    :: icesheet_modes(:) 
     type(ESMF_State) , intent(inout) :: NStateImp(:)
     type(ESMF_State) , intent(inout) :: NStateExp(:)
     integer          , intent(out)   :: rc
@@ -502,12 +500,6 @@ contains
     end do
 
   end subroutine export_fields
-
-  !===============================================================================
-
-  integer function get_num_icesheets()
-    get_num_icesheets = num_icesheets
-  end function get_num_icesheets
 
   !===============================================================================
 

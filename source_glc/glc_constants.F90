@@ -34,6 +34,7 @@
 !           In CESM runs, glimmer_unit is set to iulog at initialization. 
 
   use glimmer_paramets, only: iulog
+  use glimmer_global  , only: fname_length
 !EOP
 !=======================================================================
 
@@ -53,6 +54,7 @@
   integer, parameter :: icesheet_name_len = 32
   character(icesheet_name_len) :: icesheet_names(max_icesheets)       ! prognostic icesheet names
   character(icesheet_name_len) :: icesheet_names_total(max_icesheets) ! prognostic + noevolve icesheet names
+  character(icesheet_name_len) :: icesheet_modes(max_icesheets)       ! mode for each ice sheet
 
    !-----------------------------------------------------------------
    ! elevation class info
@@ -114,6 +116,15 @@
    !-----------------------------------------------------------------
 
    character (char_len_long) :: model_doi_url
+
+   !-----------------------------------------------------------------
+   ! noevolve info
+   !-----------------------------------------------------------------
+
+   integer  :: global_nx(max_icesheets)
+   integer  :: global_ny(max_icesheets)
+   real(r8) :: internal_gridsize(max_icesheets)
+   character(fname_length) :: noevolve_datafiles(max_icesheets)
 
 !EOP
 !

@@ -27,7 +27,8 @@
                                   ihour,  iminute, isecond, nsteps_total, &
                                   ymd2eday, eday2ymd, runtype
    use glc_constants, only: stdout, zero_gcm_fluxes_for_all_icesheets, test_coupling, enable_frac_overrides, &
-                            max_icesheets, num_icesheets, icesheet_names, icesheet_names_total
+                            max_icesheets, num_icesheets, icesheet_names, icesheet_names_total, &
+                            icesheet_modes, global_nx, global_ny, internal_gridsize, noevolve_datafiles
    use glc_io,        only: glc_io_read_restart_time
    use glc_files,     only: nml_filename
    use glc_exit_mod, only : exit_glc, sigAbort
@@ -62,7 +63,7 @@
 ! !IROUTINE: glc_initialize
 ! !INTERFACE:
 
- subroutine glc_initialize(EClock, icesheet_modes_in)
+ subroutine glc_initialize(EClock)
 
 ! !DESCRIPTION:
 !  This routine is the initialization driver that initializes a glc run
@@ -94,11 +95,6 @@
 ! !INPUT/OUTPUT PARAMETERS:
 
    type(ESMF_Clock),     intent(in)    :: EClock
-   ! Per-NUOPC-ice-sheet mode array ('prognostic' or 'noevolve'); if absent or
-   ! all entries are 'prognostic', all ice sheets listed in cism_params are run
-   ! by CISM. Entries marked 'noevolve' are filtered out of num_icesheets and
-   ! icesheet_names so that only the prognostic subset is initialized here.
-   character(len=*), optional, intent(in) :: icesheet_modes_in(:)
 
 !EOP
 !BOC
@@ -163,16 +159,17 @@
 
   integer :: climate_tstep  ! climate time step (hours)
 
-  ! Used to filter num_icesheets / icesheet_names by icesheet_modes_in
+  ! Used to filter num_icesheets / icesheet_names by icesheet_modes
   integer :: n_prog, k
   character(icesheet_name_len) :: tmp_names(max_icesheets)
 
   integer :: yr, mon, day, tod
   integer, parameter :: days_in_year = 365
 
-  namelist /cism_params/  paramfile_base, num_icesheets, icesheet_names, &
+  namelist /cism_params/  paramfile_base, num_icesheets, icesheet_names, icesheet_modes, &
        cism_debug, ice_flux_routing, &
-       test_coupling, enable_frac_overrides
+       test_coupling, enable_frac_overrides, &
+       global_nx, global_ny, internal_gridsize ,noevolve_datafiles 
 
 ! TODO - Write version info?
 !-----------------------------------------------------------------------
@@ -245,10 +242,15 @@
    call broadcast_scalar(paramfile_base,    master_task)
    call broadcast_scalar(num_icesheets,     master_task)
    call broadcast_array (icesheet_names,    master_task)
+   call broadcast_array (icesheet_modes,    master_task)
    call broadcast_scalar(cism_debug,        master_task)
    call broadcast_scalar(ice_flux_routing,  master_task)
    call broadcast_scalar(test_coupling,     master_task)
    call broadcast_scalar(enable_frac_overrides, master_task)
+   call broadcast_array (global_nx,         master_task)
+   call broadcast_array (global_ny,         master_task)
+   call broadcast_array (internal_gridsize, master_task)
+   call broadcast_array (noevolve_datafiles, master_task)
    call set_routing(ice_flux_routing)
 
    ! Set icesheet names for prognostic plus noeolve icesheets
@@ -259,23 +261,21 @@
    ! everything that uses glc_constants:num_icesheets / icesheet_names) only
    ! ever see the prognostic ice sheets; noevolve entries are handled by the
    ! NUOPC cap via glc_noevolve_mod.
-   if (present(icesheet_modes_in)) then
-      n_prog = 0
-      tmp_names(:) = 'UNSET'
-      do k = 1, num_icesheets
-         if (trim(icesheet_modes_in(k)) == 'prognostic') then
-            n_prog = n_prog + 1
-            tmp_names(n_prog) = icesheet_names(k)
-         end if
-      end do
-
-      ! Reset num_icesheets to be only the number of prognostic icesheets
-      num_icesheets = n_prog
-      icesheet_names(:) = tmp_names(:)
-      if (my_task == master_task) then
-         write(stdout,*) 'After filtering by icesheet_modes_in: num_icesheets = ', num_icesheets
-         write(stdout,*) 'Prognostic icesheet_names: ', icesheet_names(1:num_icesheets)
+   n_prog = 0
+   tmp_names(:) = 'UNSET'
+   do k = 1, num_icesheets
+      if (trim(icesheet_modes(k)) == 'prognostic') then
+         n_prog = n_prog + 1
+         tmp_names(n_prog) = icesheet_names(k)
       end if
+   end do
+
+   ! Reset num_icesheets to be only the number of prognostic icesheets
+   num_icesheets = n_prog
+   icesheet_names(:) = tmp_names(:)
+   if (my_task == master_task) then
+      write(stdout,*) 'After filtering by icesheet_modes: num_icesheets = ', num_icesheets
+      write(stdout,*) 'Prognostic icesheet_names: ', icesheet_names(1:num_icesheets)
    end if
 
    if (my_task == master_task) then

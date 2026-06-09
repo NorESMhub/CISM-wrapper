@@ -10,35 +10,40 @@ module glc_noevolve_mod
   ! Adapted from components/cdeps/dglc/dglc_datamode_noevolve_mod.F90.
   !----------------------------------------------------------------------------
 
-  use ESMF             , only : ESMF_State, ESMF_Mesh, ESMF_DistGrid, ESMF_Field
-  use ESMF             , only : ESMF_StateGet, ESMF_FieldGet, ESMF_VMGetCurrent
-  use ESMF             , only : ESMF_FieldBundle, ESMF_FieldBundleCreate, ESMF_FieldCreate
-  use ESMF             , only : ESMF_FieldBundleAdd, ESMF_MESHLOC_ELEMENT, ESMF_TYPEKIND_R8
-  use ESMF             , only : ESMF_MeshGet, ESMF_DistGridGet
-  use ESMF             , only : ESMF_GridComp, ESMF_GridCompGet
-  use ESMF             , only : ESMF_VM, ESMF_VMBroadCast, ESMF_VMAllreduce, ESMF_VMGetCurrent
-  use ESMF             , only : ESMF_REDUCE_SUM
-  use ESMF             , only : ESMF_SUCCESS, ESMF_LogWrite, ESMF_LOGMSG_INFO
-  use ESMF             , only : ESMF_Time, ESMF_TimeGet, ESMF_Clock, ESMF_ClockGet 
-  use NUOPC            , only : NUOPC_IsConnected
-  use shr_kind_mod     , only : r8=>shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
-  use shr_sys_mod      , only : shr_sys_abort
-  use shr_log_mod      , only : shr_log_error
-  use shr_cal_mod      , only : shr_cal_ymd2date
-  use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_RHOSW, SHR_CONST_REARTH, SHR_CONST_SPVAL
-  use dshr_methods_mod , only : dshr_state_getfldptr, dshr_fldbun_getfldptr, chkerr
-  use pio              , only : file_desc_t, io_desc_t, var_desc_t, iosystem_desc_t
-  use pio              , only : pio_openfile, pio_inq_varid, pio_inq_varndims, pio_inq_vardimid
-  use pio              , only : pio_inq_dimlen, pio_initdecomp, pio_read_darray, pio_double
-  use pio              , only : pio_createfile, pio_def_dim, pio_def_var, pio_put_att, pio_fill
-  use pio              , only : pio_set_fill, pio_put_att, pio_enddef, pio_write_darray, PIO_GLOBAL
-  use pio              , only : pio_closefile, pio_freedecomp, PIO_BCAST_ERROR, PIO_NOWRITE, PIO_CLOBBER
-  use pio              , only : pio_seterrorhandling
-  use shr_pio_mod      , only : shr_pio_getiosys, shr_pio_getiotype
-  use glc_io           , only : glc_filename
-  use glc_files        , only : get_rpointer_filename
-  use glc_constants    , only : stdout
-  use glc_communicate  , only : my_task, master_task
+  use ESMF                , only : ESMF_State, ESMF_Mesh, ESMF_DistGrid, ESMF_Field
+  use ESMF                , only : ESMF_StateGet, ESMF_FieldGet, ESMF_VMGetCurrent
+  use ESMF                , only : ESMF_FieldBundle, ESMF_FieldBundleCreate, ESMF_FieldCreate
+  use ESMF                , only : ESMF_FieldBundleAdd, ESMF_MESHLOC_ELEMENT, ESMF_TYPEKIND_R8
+  use ESMF                , only : ESMF_MeshGet, ESMF_DistGridGet
+  use ESMF                , only : ESMF_GridComp, ESMF_GridCompGet
+  use ESMF                , only : ESMF_VM, ESMF_VMBroadCast, ESMF_VMAllreduce, ESMF_VMGetCurrent
+  use ESMF                , only : ESMF_REDUCE_SUM
+  use ESMF                , only : ESMF_SUCCESS, ESMF_LogWrite, ESMF_LOGMSG_INFO
+  use ESMF                , only : ESMF_Time, ESMF_TimeGet, ESMF_Clock, ESMF_ClockGet 
+  use NUOPC               , only : NUOPC_IsConnected
+  use shr_kind_mod        , only : r8=>shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
+  use shr_sys_mod         , only : shr_sys_abort
+  use shr_log_mod         , only : shr_log_error
+  use shr_cal_mod         , only : shr_cal_ymd2date
+  use shr_const_mod       , only : SHR_CONST_RHOICE, SHR_CONST_RHOSW, SHR_CONST_REARTH, SHR_CONST_SPVAL
+  use dshr_methods_mod    , only : dshr_state_getfldptr, dshr_fldbun_getfldptr, chkerr
+  use pio                 , only : file_desc_t, io_desc_t, var_desc_t, iosystem_desc_t
+  use pio                 , only : pio_openfile, pio_inq_varid, pio_inq_varndims, pio_inq_vardimid
+  use pio                 , only : pio_inq_dimlen, pio_initdecomp, pio_read_darray, pio_double
+  use pio                 , only : pio_createfile, pio_def_dim, pio_def_var, pio_put_att, pio_fill
+  use pio                 , only : pio_set_fill, pio_put_att, pio_enddef, pio_write_darray, PIO_GLOBAL
+  use pio                 , only : pio_closefile, pio_freedecomp, PIO_BCAST_ERROR, PIO_NOWRITE, PIO_CLOBBER
+  use pio                 , only : pio_seterrorhandling
+  use shr_pio_mod         , only : shr_pio_getiosys, shr_pio_getiotype
+  use glc_io              , only : glc_filename
+  use glc_files           , only : get_rpointer_filename
+  use glc_constants       , only : stdout, global_nx, global_ny, internal_gridsize, noevolve_datafiles
+  use glc_constants       , only : icesheet_modes, icesheet_names
+  use glc_communicate     , only : my_task, master_task
+  use glc_time_management , only : runtype
+  use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
+  use glc_import_export   , only : flds_scalar_name, flds_scalar_num
+  use nuopc_shr_methods   , only : state_setscalar
 
   implicit none
   private
@@ -58,10 +63,14 @@ module glc_noevolve_mod
      real(r8), pointer :: ptr(:) => null()
   end type icesheet_ptr_t
 
-  type icesheet_gindex_t
+  type icesheet_info_t
      integer, allocatable :: gindex(:)
-  end type icesheet_gindex_t
-  type(icesheet_gindex_t), allocatable :: icesheet_gindex(:) 
+     character(len=CS) :: name ! icesheet name (gris, ais,..) 
+     character(len=CS) :: mode ! prognostic or noevolve
+     integer           :: nx   ! global nx size
+     integer           :: ny   ! global ny size
+  end type icesheet_info_t
+  type(icesheet_info_t), allocatable :: icesheet_info(:) 
 
   ! Field name constants match the names used in glc_import_export.F90 (hard-wired for now)
   character(len=*), parameter :: field_in_tsrf = 'Sl_tsrf'
@@ -93,7 +102,6 @@ module glc_noevolve_mod
   real(r8), parameter :: thk0 = 1._r8  ! thickness scaling (= 1 in modern CISM)
 
   integer :: num_icesheets_total ! total number of ice sheets (prognostic + noevolve)
-  character(len=16), allocatable :: icesheet_modes(:)
 
   type(iosystem_desc_t), pointer :: pio_subsystem
   integer :: pio_io_type
@@ -104,8 +112,7 @@ module glc_noevolve_mod
 contains
 !===============================================================================
 
-  subroutine glc_noevolve_init(NStateExp, NStateImp, meshes, icesheet_modes_in, &
-       datafiles, nx_global, ny_global, internal_gridsize, rc)
+  subroutine glc_noevolve_init(NStateExp, NStateImp, meshes, clock, rc)
 
     !---------------------------------------------------------------------------
     ! Read static topography and thickness for each noevolve ice sheet, compute
@@ -121,11 +128,7 @@ contains
     type(ESMF_State)      , intent(inout) :: NStateExp(:)         ! all ice sheets (including prognostic)
     type(ESMF_State)      , intent(inout) :: NStateImp(:)         ! all ice sheets (including prognostic)
     type(ESMF_Mesh)       , intent(in)    :: meshes(:)            ! all ice sheets (including prognostic)
-    character(len=*)      , intent(in)    :: icesheet_modes_in(:) ! all ice sheets (including prognostic)
-    character(len=*)      , intent(in)    :: datafiles(:)         ! all ice sheets (including prognostic)
-    integer               , intent(in)    :: nx_global(:)         ! all ice sheets (including prognostic)
-    integer               , intent(in)    :: ny_global(:)         ! all ice sheets (including prognostic)
-    real(r8)              , intent(in)    :: internal_gridsize(:) ! [m] all ice sheets (including prognostic)
+    type(ESMF_Clock)      , intent(in)    :: clock                ! model clock
     integer               , intent(out)   :: rc
 
     ! local variables
@@ -151,8 +154,8 @@ contains
 
     ! Set module variables
     num_icesheets_total = size(NStateExp)
-    allocate(icesheet_modes(num_icesheets_total))
-    icesheet_modes(:) = icesheet_modes_in(:)
+
+    allocate(icesheet_info(num_icesheets_total))
 
     allocate(Sg_area(num_icesheets_total))
     allocate(Sg_topo(num_icesheets_total))
@@ -161,7 +164,6 @@ contains
     allocate(Sg_icemask_coupled_fluxes(num_icesheets_total))
     allocate(Fgrg_rofi(num_icesheets_total))
     allocate(Flgl_qice(num_icesheets_total))
-    allocate(icesheet_gindex(num_icesheets_total))
 
     ! Get the GLC PIO iosystem from the shared  PIO initialization
     pio_subsystem => shr_pio_getiosys('GLC')
@@ -170,8 +172,13 @@ contains
     ! Loop over ice sheets and initialize only those that are noevolve
     icesheet_loop: do ns = 1, num_icesheets_total
 
+       icesheet_info(ns)%nx = global_nx(ns) 
+       icesheet_info(ns)%ny = global_ny(ns) 
+       icesheet_info(ns)%mode = icesheet_modes(ns) 
+       icesheet_info(ns)%name = icesheet_names(ns) 
+
        !--- Skip this ice sheet if it is prognostic ---
-       if (trim(icesheet_modes(ns)) /= 'noevolve') cycle
+       if (trim(icesheet_info(ns)%mode) /= 'noevolve') cycle
 
        !--- Grab pointers into the ESMF export fields ---
        call dshr_state_getfldptr(NStateExp(ns), field_out_area, &
@@ -197,7 +204,6 @@ contains
        call dshr_state_getfldptr(NStateExp(ns), field_out_rofi_to_ocn, &
             fldptr1=Fgrg_rofi(ns)%ptr, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-       Fgrg_rofi(ns)%ptr(:) = 0._r8
 
        !--- Grab pointer into the SMB import field ---
        if (.not. NUOPC_IsConnected(NStateImp(ns), fieldName=field_in_qice)) then
@@ -215,8 +221,8 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call ESMF_DistGridGet(distgrid, localDe=0, elementCount=lsize, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-       allocate(icesheet_gindex(ns)%gindex(lsize))
-       call ESMF_DistGridGet(distgrid, localDe=0, seqIndexList=icesheet_gindex(ns)%gindex, rc=rc)
+       allocate(icesheet_info(ns)%gindex(lsize))
+       call ESMF_DistGridGet(distgrid, localDe=0, seqIndexList=icesheet_info(ns)%gindex, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        !--- Cell area (radians^2, constant) ---
@@ -247,23 +253,23 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        !--- Open data file, set up PIO decomposition, read topg and thk ---
-       inquire(file=trim(datafiles(ns)), exist=exists)
+       inquire(file=trim(noevolve_datafiles(ns)), exist=exists)
        if (.not.exists) then
-          call shr_sys_abort(' ERROR: model input file '//trim(datafiles(ns))//' does not exist', rc=rc)
+          call shr_sys_abort(' ERROR: model input file '//trim(noevolve_datafiles(ns))//' does not exist', rc=rc)
        else
           if (my_task == master_task) then
-             write(stdout,'(a,a)')' opening file ',trim(datafiles(ns))
+             write(stdout,'(a,a)')' opening file ',trim(noevolve_datafiles(ns))
           end if
        end if
-       rcode = pio_openfile(pio_subsystem, pioid, pio_io_type, trim(datafiles(ns)), PIO_NOWRITE)
+       rcode = pio_openfile(pio_subsystem, pioid, pio_io_type, trim(noevolve_datafiles(ns)), PIO_NOWRITE)
        call pio_seterrorhandling(pioid, PIO_BCAST_ERROR)
        rcode = pio_inq_varid(pioid, 'thk', varid)
        rcode = pio_inq_varndims(pioid, varid, ndims)
        allocate(dimid(ndims))
        rcode = pio_inq_vardimid(pioid, varid, dimid(1:ndims))
        deallocate(dimid)
-       call pio_initdecomp(pio_subsystem, pio_double, &
-            (/nx_global(ns), ny_global(ns)/), icesheet_gindex(ns)%gindex, pio_iodesc)
+       call pio_initdecomp(pio_subsystem, pio_double, (/icesheet_info(ns)%nx, icesheet_info(ns)%ny/), &
+            icesheet_info(ns)%gindex, pio_iodesc)
 
        ! Read in the data into the appropriate field bundle pointers
        ! Note that Sg_ice_covered(ns)%ptr points into the data for
@@ -326,6 +332,22 @@ contains
           end if
        end do
 
+       ! Set scalars in export state
+       call State_SetScalar(dble(icesheet_info(ns)%nx), flds_scalar_index_nx, &
+            NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call State_SetScalar(dble(icesheet_info(ns)%ny), flds_scalar_index_ny, &
+            NStateExp(ns), flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! Initialize Fgrg_rofi
+       if (runtype == 'continue') then
+          call glc_noevolve_restart_read(ns, clock, rc)
+          if (chkerr(rc,__LINE__,u_FILE_u)) return
+       else
+          Fgrg_rofi(ns)%ptr(:) = 0._r8
+       end if
+
        if (my_task == master_task) then
           write(stdout,'(a,i4)') subname//' finished initialization for noevolve ice sheet '// int_to_str(ns)
        end if
@@ -367,7 +389,7 @@ contains
 
     icesheet_loop: do ns = 1, num_icesheets_total
 
-       if (trim(icesheet_modes(ns)) /= 'noevolve') cycle
+       if (trim(icesheet_info(ns)%mode) /= 'noevolve') cycle
 
        ! Get number of grid cells per ice sheet
        lsize = size(Fgrg_rofi(ns)%ptr)
@@ -470,7 +492,7 @@ contains
 
     icesheet_loop: do ns = 1, num_icesheets_total
 
-       if (trim(icesheet_modes(ns)) /= 'noevolve') cycle
+       if (trim(icesheet_info(ns)%mode) /= 'noevolve') cycle
 
        call dshr_state_getfldptr(NStateExp(ns), field_out_hflx_to_lnd, fldptr1=ptr, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -519,14 +541,10 @@ contains
    end function is_ice_covered
 
   !===============================================================================
-  subroutine glc_noevolve_restart_write(icesheet_name, icesheet_index, &
-       nx_global, ny_global, clock, rc)
+  subroutine glc_noevolve_restart_write(icesheet_index, clock, rc)
 
     ! input/output variables
-    character(len=*) , intent(in)    :: icesheet_name
     integer          , intent(in)    :: icesheet_index
-    integer          , intent(in)    :: nx_global
-    integer          , intent(in)    :: ny_global
     type(ESMF_Clock) , intent(in)    :: clock
     integer          , intent(out)   :: rc
 
@@ -545,10 +563,13 @@ contains
     type(var_desc_t)    :: varid
     type(io_desc_t)     :: pio_iodesc
     integer             :: ptr_unit
+    integer             :: ns
     character(len=*), parameter :: subname = '(glc_noevolve_mod:noevolve_restart_write) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+
+    ns = icesheet_index
 
     ! determine restart filename
     call ESMF_ClockGet(clock, currTime=CurrentTime, rc=rc)
@@ -557,29 +578,29 @@ contains
     if ( rc /= ESMF_SUCCESS ) call shr_sys_abort("ERROR: "//subname)
     call shr_cal_ymd2date(yr, mon, day, ymd)
 
-    rest_file = glc_filename(icesheet_name, yr, mon, day, tod, 'restart')
+    rest_file = glc_filename(icesheet_info(ns)%name, yr, mon, day, tod, 'restart')
     if (my_task == master_task) then
        write(stdout,'(a)') subname//' writing noevolve restart file '//trim(rest_file)
     endif
 
     ! write data model restart data
     rcode = pio_createfile(pio_subsystem, pioid, pio_io_type, trim(rest_file), pio_clobber)
-    rcode = pio_def_dim(pioid, '_nx', nx_global, dimid2(1))
-    rcode = pio_def_dim(pioid, '_ny', ny_global, dimid2(2))
+    rcode = pio_def_dim(pioid, '_nx', icesheet_info(ns)%nx, dimid2(1))
+    rcode = pio_def_dim(pioid, '_ny', icesheet_info(ns)%ny, dimid2(2))
     rcode = pio_def_var(pioid, 'flgl_rofi', PIO_DOUBLE, (/dimid2/), varid)
     rcode = pio_put_att(pioid, varid, "_FillValue", shr_const_spval)
     rcode = pio_set_fill(pioid, PIO_FILL, oldmode)
     rcode = pio_enddef(pioid)
 
     call pio_initdecomp(pio_subsystem, pio_double, &
-         (/nx_global,ny_global/), icesheet_gindex(icesheet_index)%gindex, pio_iodesc)
-    call pio_write_darray(pioid, varid, pio_iodesc, Fgrg_rofi(icesheet_index)%ptr, rcode, fillval=shr_const_spval)
+         (/icesheet_info(ns)%nx,icesheet_info(ns)%ny/), icesheet_info(ns)%gindex, pio_iodesc)
+    call pio_write_darray(pioid, varid, pio_iodesc, Fgrg_rofi(ns)%ptr, rcode, fillval=shr_const_spval)
     call pio_closefile(pioid)
     call pio_freedecomp(pio_subsystem, pio_iodesc)
 
     ! write pointer to restart file
     if (my_task == master_task) then
-       open(newunit=ptr_unit, file=get_rpointer_filename(icesheet_name, yr, mon, day, tod, .false.))
+       open(newunit=ptr_unit, file=get_rpointer_filename(icesheet_info(ns)%name, yr, mon, day, tod, .false.))
        write(ptr_unit,'(a)') trim(rest_file)
        close(ptr_unit)
     endif
@@ -587,58 +608,68 @@ contains
   end subroutine glc_noevolve_restart_write
 
   !===============================================================================
-  subroutine glc_noevolve_restart_read(meshes, restfilem, rpfile, nx_global, ny_global, rc)
+  subroutine glc_noevolve_restart_read(icesheet_index, clock, rc)
 
     ! input/output arguments
-    type(ESMF_Mesh)        , intent(in)    :: meshes(:) ! ice sheets meshes
-    character(len=*)       , intent(inout) :: restfilem
-    character(len=*)       , intent(in)    :: rpfile
-    integer                , intent(in)    :: nx_global(:)
-    integer                , intent(in)    :: ny_global(:)
-    integer                , intent(out)   :: rc
+    integer          , intent(in)  :: icesheet_index
+    type(ESMF_Clock) , intent(in)  :: clock
+    integer          , intent(out) :: rc
 
     ! local variables
-    integer             :: ns
-    integer             :: lsize
-    integer             :: nu
-    logical             :: exists  ! file existance
-    type(ESMF_VM)       :: vm
-    type(file_desc_t)   :: pioid
-    type(var_desc_t)    :: varid
-    type(io_desc_t)     :: pio_iodesc
-    integer             :: rcode
-    integer             :: tmp(1)
-    character(len=*), parameter :: subName = "(dglc_datamode_noevolve_restart_read) "
+    integer           :: ns
+    integer           :: yr
+    integer           :: mon
+    integer           :: day
+    integer           :: tod
+    type(ESMF_Time)   :: currtime
+    type(ESMF_VM)     :: vm
+    type(file_desc_t) :: pioid
+    type(var_desc_t)  :: varid
+    type(io_desc_t)   :: pio_iodesc
+    integer           :: rcode
+    logical           :: exists  ! file existance
+    integer           :: ptr_unit
+    character(len=CL) :: restfile
+    character(len=CL) :: restfile0
+    character(len=CL) :: pointerfile
+    character(len=*), parameter :: subname = '(glc_noevolve_mod:noevolve_restart_read) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
 
-    ! Determine restart file
+    ns = icesheet_index
+
+    ! Get restart filename from rpointer file
+    call ESMF_ClockGet(clock, currtime=currtime, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_TimeGet(currtime, yy=yr, mm=mon, dd=day, s=tod, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call ESMF_VMGetCurrent(vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     if (my_task == master_task) then
-       write(stdout,'(a)') subname//' restart filename from rpointer '//trim(rpfile)
-       open(newunit=nu, file=trim(rpfile), form='formatted')
-       read(nu,'(a)') restfilem
-       close(nu)
-       inquire(file=trim(restfilem), exist=exists)
-    endif
-    call ESMF_VMBroadCast(vm, restfilem, CL, master_task, rc=rc)
+       pointerfile = get_rpointer_filename(icesheet_info(ns)%name, yr, mon, day, tod, .true.)
+       open(newunit=ptr_unit, file=pointerfile)
+       read(ptr_unit,'(a)') restfile
+       close(ptr_unit)
+       inquire(file=trim(restfile), exist=exists)
+       if (.not. exists) then
+          call shr_sys_abort(' ERROR: restart file '//trim(restfile)//' does not exist', rc=rc)
+       end if
+    end if
+    call ESMF_VMBroadCast(vm, restfile, CL, master_task, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Read restart file
     if (my_task == master_task) then
-       write(stdout, '(a)') subname//' reading data model restart '//trim(restfilem)
+       write(stdout,'(3a)') subname,' reading noevolve restart file ',trim(restfile)
     end if
-    rcode = pio_openfile(pio_subsystem, pioid, pio_io_type, trim(restfilem), pio_nowrite)
-    do ns = 1,num_icesheets_total
-       if (trim(icesheet_modes(ns)) /= 'noevolve') cycle
-       call pio_initdecomp(pio_subsystem, pio_double, &
-            (/nx_global(ns),ny_global(ns)/), icesheet_gindex(ns)% gindex, pio_iodesc)
-       rcode = pio_inq_varid(pioid, 'flgl_rofi', varid)
-       call pio_read_darray(pioid, varid, pio_iodesc, Fgrg_rofi(ns)%ptr, rcode)
-       call pio_freedecomp(pio_subsystem, pio_iodesc)
-    end do ! loop over ice sheets
+    rcode = pio_openfile(pio_subsystem, pioid, pio_io_type, trim(restfile), pio_nowrite)
+    call pio_initdecomp(pio_subsystem, pio_double, &
+         (/icesheet_info(ns)%nx,icesheet_info(ns)%ny/), icesheet_info(ns)%gindex, pio_iodesc)
+    rcode = pio_inq_varid(pioid, 'flgl_rofi', varid)
+    call pio_read_darray(pioid, varid, pio_iodesc, Fgrg_rofi(ns)%ptr, rcode)
+    call pio_freedecomp(pio_subsystem, pio_iodesc)
     call pio_closefile(pioid)
 
   end subroutine glc_noevolve_restart_read
