@@ -648,8 +648,13 @@ Sub-elements of each entry include:
     <category>cism_config_history</category>
     <group>esm_output</group>
     <values>
-      <value icesheet="gris" cism_evolve_this_icesheet=".true." >thk usurf topg velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied_tavg bmlt_applied_tavg calving_rate_tavg frontal_melt_rate_tavg forceretreat_rate_tavg rmicecap_rate_tavg       iareag iareaf imass imass_above_flotation total_smb_flux_tavg total_bmb_flux_tavg total_calving_flux_tavg total_frontal_melt_flux_tavg total_forceretreat_flux_tavg total_rmicecap_flux_tavg total_gl_flux_tavg</value>
-      <value icesheet="ais" cism_evolve_this_icesheet=".true." >thk usurf topg base velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied_tavg bmlt_applied_tavg calving_rate_tavg frontal_melt_rate_tavg forceretreat_rate_tavg rmicecap_rate_tavg       iareag iareaf imass imass_above_flotation total_smb_flux_tavg total_bmb_flux_tavg total_calving_flux_tavg total_frontal_melt_flux_tavg total_forceretreat_flux_tavg total_rmicecap_flux_tavg total_gl_flux_tavg</value>
+      <!-- Workaround for BFB-restart failure: use instantaneous fields rather than the
+           _tavg variants.  The _tavg accumulators (and the per-output-file total_time
+           scalar that normalizes them at write time) are not preserved across restarts,
+           so any _tavg field in the history file breaks BFB.  Revert to instantaneous
+           fields until the upstream CISM tavg restart issue is fixed. -->
+      <value icesheet="gris" cism_evolve_this_icesheet=".true." >thk usurf topg velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied bmlt_applied calving_rate melt_rate forceretreat_rate rmicecap_rate       iareag iareaf imass imass_above_flotation total_smb_flux total_bmb_flux total_calving_flux total_frontal_melt_flux total_forceretreat_flux total_rmicecap_flux total_gl_flux</value>
+      <value icesheet="ais" cism_evolve_this_icesheet=".true." >thk usurf topg base velnorm uvel vvel artm btemp bpmp tempstag powerlaw_c bwat beta_internal floating_mask grounded_mask acab_applied bmlt_applied calving_rate melt_rate forceretreat_rate rmicecap_rate       iareag iareaf imass imass_above_flotation total_smb_flux total_bmb_flux total_calving_flux total_frontal_melt_flux total_forceretreat_flux total_rmicecap_flux total_gl_flux</value>
       <value cism_evolve_this_icesheet=".false.">smb artm thk usurf topg</value>
     </values>
     <desc>
