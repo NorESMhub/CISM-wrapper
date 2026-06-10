@@ -216,12 +216,6 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='mesh_glc', value=mesh_glc_list, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     num_icesheets_from_mediator = shr_string_listGetNum(mesh_glc_list)
-    if (my_task == master_task) then
-       write(stdout,'(a,i4)')'number of ice sheets (total) is ',num_icesheets_from_mediator
-       do ns = 1,num_icesheets_from_mediator
-          write(stdout,'(a,i4,a,a)')' icesheet_modes for ice_sheet ',ns,' = ',icesheet_modes(ns)
-       end do
-    end if
 
     ! Create nested state
     allocate(NStateImp(num_icesheets_from_mediator))
@@ -377,6 +371,14 @@ contains
        write(stdout,F01) ' GLC Initial Date ',iyear,imonth,iday,ihour,iminute,isecond
        write(stdout,F00) ' Initialize Done'
     endif
+
+    if (my_task == master_task) then
+       write(stdout,'(a,i4)')'number of ice sheets (total) is ',num_icesheets_from_mediator
+       do ns = 1,num_icesheets_from_mediator
+          write(stdout,'(a,i4,a,a)')' icesheet_modes for ice sheet ',ns,' = ',icesheet_modes(ns)
+          write(stdout,'(a,i4,a,a)')' icesheet_names for ice sheet ',ns,' = ',icesheet_names_total(ns)
+       end do
+    end if
 
     ! Determine number of prognostic ice sheet and prognostic indexing
     num_prognostic = 0

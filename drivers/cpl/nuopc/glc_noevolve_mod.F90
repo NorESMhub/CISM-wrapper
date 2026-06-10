@@ -38,7 +38,7 @@ module glc_noevolve_mod
   use glc_io              , only : glc_filename
   use glc_files           , only : get_rpointer_filename
   use glc_constants       , only : stdout, global_nx, global_ny, internal_gridsize, noevolve_datafiles
-  use glc_constants       , only : icesheet_modes, icesheet_names
+  use glc_constants       , only : icesheet_modes, icesheet_names_total
   use glc_communicate     , only : my_task, master_task
   use glc_time_management , only : runtype
   use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
@@ -175,7 +175,7 @@ contains
        icesheet_info(ns)%nx = global_nx(ns) 
        icesheet_info(ns)%ny = global_ny(ns) 
        icesheet_info(ns)%mode = icesheet_modes(ns) 
-       icesheet_info(ns)%name = icesheet_names(ns) 
+       icesheet_info(ns)%name = icesheet_names_total(ns) 
 
        !--- Skip this ice sheet if it is prognostic ---
        if (trim(icesheet_info(ns)%mode) /= 'noevolve') cycle
