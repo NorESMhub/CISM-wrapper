@@ -27,8 +27,8 @@
                                   ihour,  iminute, isecond, nsteps_total, &
                                   ymd2eday, eday2ymd, runtype
    use glc_constants, only: stdout, zero_gcm_fluxes_for_all_icesheets, test_coupling, enable_frac_overrides, &
-                            max_icesheets, num_icesheets, icesheet_names, icesheet_names_total, &
-                            icesheet_modes, global_nx, global_ny, internal_gridsize, noevolve_datafiles
+                            max_icesheets, num_icesheets, icesheet_names, icesheet_names_total, icesheet_modes, &
+                            noevolve_global_nx, noevolve_global_ny, noevolve_internal_gridsize, noevolve_datafiles
    use glc_io,        only: glc_io_read_restart_time
    use glc_files,     only: nml_filename
    use glc_exit_mod, only : exit_glc, sigAbort
@@ -169,7 +169,7 @@
   namelist /cism_params/  paramfile_base, num_icesheets, icesheet_names, icesheet_modes, &
        cism_debug, ice_flux_routing, &
        test_coupling, enable_frac_overrides, &
-       global_nx, global_ny, internal_gridsize ,noevolve_datafiles 
+       noevolve_global_nx, noevolve_global_ny, noevolve_internal_gridsize ,noevolve_datafiles 
 
 ! TODO - Write version info?
 !-----------------------------------------------------------------------
@@ -247,10 +247,10 @@
    call broadcast_scalar(ice_flux_routing,  master_task)
    call broadcast_scalar(test_coupling,     master_task)
    call broadcast_scalar(enable_frac_overrides, master_task)
-   call broadcast_array (global_nx,         master_task)
-   call broadcast_array (global_ny,         master_task)
-   call broadcast_array (internal_gridsize, master_task)
-   call broadcast_array (noevolve_datafiles, master_task)
+   call broadcast_array (noevolve_global_nx,         master_task)
+   call broadcast_array (noevolve_global_ny,         master_task)
+   call broadcast_array (noevolve_internal_gridsize, master_task)
+   call broadcast_array (noevolve_datafiles,         master_task)
    call set_routing(ice_flux_routing)
 
    ! Set icesheet names for prognostic plus noeolve icesheets

@@ -37,8 +37,9 @@ module glc_noevolve_mod
   use shr_pio_mod         , only : shr_pio_getiosys, shr_pio_getiotype
   use glc_io              , only : glc_filename
   use glc_files           , only : get_rpointer_filename
-  use glc_constants       , only : stdout, global_nx, global_ny, internal_gridsize, noevolve_datafiles
-  use glc_constants       , only : icesheet_modes, icesheet_names_total
+  use glc_constants       , only : icesheet_modes, icesheet_names_total, stdout 
+  use glc_constants       , only : noevolve_global_nx, noevolve_global_ny
+  use glc_constants       , only : noevolve_internal_gridsize, noevolve_datafiles
   use glc_communicate     , only : my_task, master_task
   use glc_time_management , only : runtype
   use glc_import_export   , only : flds_scalar_index_nx, flds_scalar_index_ny
@@ -172,8 +173,8 @@ contains
     ! Loop over ice sheets and initialize only those that are noevolve
     icesheet_loop: do ns = 1, num_icesheets_total
 
-       icesheet_info(ns)%nx = global_nx(ns) 
-       icesheet_info(ns)%ny = global_ny(ns) 
+       icesheet_info(ns)%nx = noevolve_global_nx(ns) 
+       icesheet_info(ns)%ny = noevolve_global_ny(ns) 
        icesheet_info(ns)%mode = icesheet_modes(ns) 
        icesheet_info(ns)%name = icesheet_names_total(ns) 
 
@@ -229,9 +230,9 @@ contains
        !    Computed from the user-specified internal grid spacing (matches the
        !    dglc datamode_noevolve convention).
        !    SHR_CONST_REARTH is the radius of earth in m
-       !    model_internal_gridsize is the internal model gridsize in m
+       !    noevolve_internal_gridsize is the internal model gridsize in m
        do ng = 1, lsize
-          Sg_area(ns)%ptr(ng) = (internal_gridsize(ns) / SHR_CONST_REARTH)**2
+          Sg_area(ns)%ptr(ng) = (noevolve_internal_gridsize(ns) / SHR_CONST_REARTH)**2
        end do
 
        !--- Build field bundle to hold topg and thk from file ---

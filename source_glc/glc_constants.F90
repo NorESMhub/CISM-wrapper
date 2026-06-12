@@ -121,9 +121,9 @@
    ! noevolve info
    !-----------------------------------------------------------------
 
-   integer  :: global_nx(max_icesheets)
-   integer  :: global_ny(max_icesheets)
-   real(r8) :: internal_gridsize(max_icesheets)
+   integer  :: noevolve_global_nx(max_icesheets)
+   integer  :: noevolve_global_ny(max_icesheets)
+   real(r8) :: noevolve_internal_gridsize(max_icesheets)
    character(fname_length) :: noevolve_datafiles(max_icesheets)
 
 !EOP

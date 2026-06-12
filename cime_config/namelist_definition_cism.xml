@@ -208,7 +208,7 @@ Sub-elements of each entry include:
 <!-- in the same relative order.                                    -->
 <!-- =============================================================  -->
 
-  <entry id="global_nx">
+  <entry id="noevolve_global_nx">
     <type>integer(10)</type>
     <category>cism</category>
     <group>cism_params</group>
@@ -224,7 +224,7 @@ Sub-elements of each entry include:
     </desc>
   </entry>
 
-  <entry id="global_ny">
+  <entry id="noevolve_global_ny">
     <type>integer(10)</type>
     <category>cism</category>
     <group>cism_params</group>
@@ -241,7 +241,7 @@ Sub-elements of each entry include:
     </desc>
   </entry>
 
-  <entry id="internal_gridsize">
+  <entry id="noevolve_internal_gridsize">
     <type>real(10)</type>
     <category>cism</category>
     <group>cism_params</group>
