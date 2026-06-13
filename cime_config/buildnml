@@ -294,19 +294,30 @@ def _check_compset_grid_consistency(case, icesheet_names, glc_grid_names):
         grid_startswith_icesheet = [g.startswith(icesheet) for g in glc_grid_names]
         num_matches = grid_startswith_icesheet.count(True)
         expect(num_matches == 1,
-               "Inconsistency between compset and grid: "
-               "{} included in compset, so expect one grid starting with that name, "
-               "but found {} grids with that name in GLC_GRID {}".format(
-                   icesheet, num_matches, glc_grid))
+               "Inconsistency between compset and grid: the compset includes the "
+               "'{}' ice sheet, so GLC_GRID must contain exactly one grid for it "
+               "(a grid name starting with '{}'), but found {}.\n"
+               "  Ice sheets in compset : {}\n"
+               "  Grids in GLC_GRID ({}) : {}\n"
+               "Fix: choose a --res whose GLC_GRID matches the ice sheets in the "
+               "compset (e.g. an '{}'-only grid), or change the compset so its ice "
+               "sheets match GLC_GRID.".format(
+                   icesheet, icesheet, num_matches,
+                   icesheet_names, glc_grid, glc_grid_names, icesheet))
 
     for grid in glc_grid_names:
         icesheet_is_prefix_of_grid = [grid.startswith(i) for i in icesheet_names]
         num_matches = icesheet_is_prefix_of_grid.count(True)
         expect(num_matches == 1,
-               "Inconsistency between compset and grid: "
-               "{} included in GLC_GRID, so expect it to be the grid for one ice sheet in this case, "
-               "but found {} ice sheets that are the prefix of this grid name".format(
-                   grid, num_matches))
+               "Inconsistency between compset and grid: GLC_GRID contains the grid "
+               "'{}', but no ice sheet in the compset corresponds to it ({} matches).\n"
+               "  Ice sheets in compset : {}\n"
+               "  Grids in GLC_GRID ({}) : {}\n"
+               "Fix: either choose a --res whose GLC_GRID only includes grids for "
+               "the ice sheets in the compset, or use a compset that includes the "
+               "ice sheet for grid '{}'.".format(
+                   grid, num_matches,
+                   icesheet_names, glc_grid, glc_grid_names, grid))
 
     # ------------------------------------------------------------------------
     # Now check for consistency in ordering. Errors here typically indicate an
