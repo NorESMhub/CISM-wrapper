@@ -110,6 +110,7 @@
      <type>logical</type>
      <valid_values>TRUE</valid_values>
      <group>run_component_cism</group>
+     <default_value>TRUE</default_value>
      <file>env_run.xml</file>
      <desc>This is currently kept for backwards compatibility until
      this xml variable can be removed from CTSM and CMEPS.
