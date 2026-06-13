@@ -3,7 +3,7 @@
 <entry_id version="3.0">
 
   <description modifier_mode="+">
-    <desc glc="CISM2[%EVOLVE][%NOEVOLVE][%GRIS-EVOLVE][%GRIS-NOEVOLVE][%AIS-EVOLVE][%AIS-NOEVOLVE]">cism2:</desc>
+    <desc glc="CISM2[%GRIS-EVOLVE][%GRIS-NOEVOLVE][%AIS-EVOLVE][%AIS-NOEVOLVE]">cism2:</desc>
     <!-- For any ice sheet present in this run, it should be specified
          exactly once, as either ICESHEET-EVOLVE or ICESHEET-NOEVOLVE
          for the appropriate ICESHEET (GRIS, AIS). Any ice sheet not
