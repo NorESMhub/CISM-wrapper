@@ -108,24 +108,11 @@
   
   <entry id="CISM_EVOLVE">
      <type>logical</type>
-     <valid_values>TRUE,FALSE</valid_values>
-     <default_value>FALSE</default_value>
-     <values>
-       <!-- If ANY ice sheet is evolving, then set the overall
-            CISM_EVOLVE to TRUE. This is needed for some logic in CMEPS.
-       -->
-       <value compset="_CISM[^_]*-EVOLVE">TRUE</value>
-     </values>
+     <valid_values>TRUE</valid_values>
      <group>run_component_cism</group>
      <file>env_run.xml</file>
-     <desc>Whether CISM ice evolution is on or off for CISM as a whole.
-     This must be TRUE if CISM_EVOLVE_ICESHEET is TRUE for any ICESHEET,
-     and FALSE if CISM_EVOLVE_ICESHEET is FALSE for all ICESHEETs that
-     are present in this run.
-
-     Setting CISM_EVOLVE to FALSE in a hybrid case also forces the use
-     of observed initial conditions, as if you had also set
-     CISM_OBSERVED_IC=TRUE.
+     <desc>This is currently kept for backwards compatibility until
+     this xml variable can be removed from CTSM and CMEPS.
      </desc>
   </entry>
 
@@ -145,10 +132,6 @@
     implies that CISM should instead use the observed initial conditions
     that are generally used for startup runs. This variable is ignored
     for startup runs; for branch runs, it must be FALSE.
-
-    Note that setting CISM_EVOLVE to FALSE in a hybrid case also forces
-    the use of observed initial conditions, as if you had also set
-    CISM_OBSERVED_IC=TRUE.
     </desc>
   </entry>
 
