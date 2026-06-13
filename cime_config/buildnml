@@ -365,24 +365,30 @@ def _create_cism_in(case, confdir, inst_string, icesheet_names, infile, nmlgen, 
     nmlgen.init_defaults([infile], config,
                          skip_default_for_groups=_CISM_CONFIG_GROUPS+["glc_override_nml"])
 
+    # IMPORTANT: nmlgen.add_default("icesheet_names", value=icesheet_names)
+    # mutates its input list IN PLACE, turning the bare names ('ais', 'gris')
+    # into namelist literals ('"ais"', '"gris"'). So snapshot the bare names
+    # FIRST and use that snapshot for all per-ice-sheet logic below; otherwise
+    # _ICESHEET_OPTIONS lookups would be done with quoted keys and fail.
+    clean_icesheet_names = list(icesheet_names)
+
     nmlgen.add_default("paramfile_base", value="cism"+inst_string, ignore_abs_path=True)
-    nmlgen.add_default("num_icesheets", value=len(icesheet_names))
+    nmlgen.add_default("num_icesheets", value=len(clean_icesheet_names))
     nmlgen.add_default("icesheet_names", value=icesheet_names)
 
-    # Per-ice-sheet mode, built in the SAME (implicit) order as icesheet_names
-    # (i.e., the _ICESHEET_OPTIONS order: ais, gris, ...), NOT the order the
-    # modifiers happen to appear in the compset longname. An ice sheet that is
-    # evolving (CISM_EVOLVE_<ICESHEET>=TRUE, set from the %<ICESHEET>-EVOLVE
-    # compset modifier) runs the CISM dycore ("prognostic"); one that is not
-    # evolving (%<ICESHEET>-NOEVOLVE) uses the data-glacier ("noevolve") path
-    # handled by glc_noevolve_mod. The noevolve_datafiles / noevolve_global_nx /
-    # noevolve_global_ny / noevolve_internal_gridsize arrays are populated from
-    # their glc_grid-keyed defaults in namelist_definition_cism.xml, which are
-    # likewise indexed in this same order (consistency between GLC_GRID order and
-    # icesheet_names order is enforced by _check_compset_grid_consistency).
+    # Per-ice-sheet mode, built in the canonical _ICESHEET_OPTIONS order (ais,
+    # gris, ...) by iterating clean_icesheet_names. An ice sheet that is evolving
+    # (CISM_EVOLVE_<ICESHEET>=TRUE, from the %<ICESHEET>-EVOLVE modifier) runs the
+    # CISM dycore ("prognostic"); one that is not evolving (%<ICESHEET>-NOEVOLVE)
+    # uses the data-glacier ("noevolve") path handled by glc_noevolve_mod.
+    #
+    # The noevolve_datafiles / noevolve_global_nx / noevolve_global_ny /
+    # noevolve_internal_gridsize arrays are populated automatically from their
+    # glc_grid-keyed defaults in namelist_definition_cism.xml (in the same
+    # canonical order, which _check_compset_grid_consistency enforces).
     icesheet_modes = [
         "prognostic" if _is_icesheet_evolving(case, icesheet) else "noevolve"
-        for icesheet in icesheet_names
+        for icesheet in clean_icesheet_names
     ]
     nmlgen.add_default("icesheet_modes", value=icesheet_modes)
 
