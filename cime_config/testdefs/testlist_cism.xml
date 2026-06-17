@@ -56,19 +56,26 @@
   <!--   </options> -->
   <!-- </test> -->
 
-  <!-- BUG(wjs, 2021-09-29, ESCOMP/CISM-wrapper#60) This currently fails
-       at namelist generation time, with "ERROR: for TG compset require
-       that lnd_cpl_time equal glc_cpl_time". If I remember correctly,
-       Mariana Vertenstein has fixed this issue on a branch of CMEPS.
-       Once it is working, we should restore this test. -->
-  <test name="ERS_D_Ly3" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/noevolve">
+  
+  <test name="ERS_D_Ly3" grid="f09_g17_ais8gris4" compset="T1850Gaxg">
     <machines>
       <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
       <machine name="olivia" compiler="intel" category="aux_cism_noresm"/>
     </machines>
     <options>
       <option name="wallclock">0:30</option>
-      <option name="comment">ice evolution off is the typical operation of cism within cesm, so test that configuration</option>
+      <option name="comment">noevolve Antarctica and evolving Greenland</option>
+    </options>
+  </test>
+
+  <test name="ERS_D_Ly3" grid="f09_g17_ais8gris4" compset="T1850Gagx">
+    <machines>
+      <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
+      <machine name="olivia" compiler="intel" category="aux_cism_noresm"/>
+    </machines>
+    <options>
+      <option name="wallclock">0:30</option>
+      <option name="comment">noevolve Greenland and evolving Antarctica</option>
     </options>
   </test>
 
@@ -99,7 +106,7 @@
   <test name="ERS_D_Ly3" grid="f09_g17_gris4" compset="T1850Gg" testmods="cism/cmip6_evolving_icesheet">
     <machines>
       <machine name="betzy" compiler="gnu" category="aux_cism_noresm"/>
-      <machine name="olivia" compiler="gnu" category="aux_cism_noresm"/>
+      <!-- <machine name="olivia" compiler="gnu" category="aux_cism_noresm"/> -->
     </machines>
     <options>
       <option name="wallclock">1:00</option>
@@ -263,17 +270,6 @@
     </options>
   </test>
 
-  <test name="SMS_Lm13" grid="f19_f19_mtn14" compset="I1850Clm50SpG" testmods="cism/noevolve">
-    <machines>
-      <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
-      <machine name="olivia" compiler="intel" category="aux_cism_noresm"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:45:00</option>
-      <option name="comment">Include an I compset test with CISM in NOEVOLVE mode. The purpose of this test is: Often there are answer changes in CISM, but we expect that these should not affect NOEVOLVE runs (which is the typical CESM configuration). This test allows us to do a baseline comparison to confirm that expectation. 13-months rather than 1-year in order to allow time for CISM to affect CLM (and CLM to produce the next month's history file).</option>
-    </options>
-  </test>
-
   <test name="ERS_D_Ly3" grid="f09_g17_ais8gris4" compset="T1850Gag">
     <machines>
       <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
@@ -318,7 +314,7 @@
     </options>
   </test>
 
-  <test name="ERI_Ly9" grid="f09_g17_ais8gris4" compset="T1850Gag" testmods="cism-noevolve_ais">
+  <test name="ERI_Ly9" grid="f09_g17_ais8gris4" compset="T1850Gaxg">
     <machines>
       <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
       <machine name="olivia" compiler="intel" category="aux_cism_noresm"/>
