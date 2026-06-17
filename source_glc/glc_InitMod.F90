@@ -266,7 +266,7 @@
    do k = 1, num_icesheets
       if (trim(icesheet_modes(k)) == 'prognostic') then
          n_prog = n_prog + 1
-         tmp_names(n_prog) = icesheet_names(k)
+         tmp_names(n_prog) = trim(icesheet_names(k))
       end if
    end do
 
