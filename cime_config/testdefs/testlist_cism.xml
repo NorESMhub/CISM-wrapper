@@ -314,7 +314,7 @@
     </options>
   </test>
 
-  <test name="ERI_Ly9" grid="f09_g17_ais8gris4" compset="T1850Gaxg">
+  <test name="ERI_Ly9_P1024" grid="f09_g17_ais8gris4" compset="T1850Gaxg">
     <machines>
       <machine name="betzy" compiler="intel" category="aux_cism_noresm"/>
       <machine name="olivia" compiler="intel" category="aux_cism_noresm"/>
