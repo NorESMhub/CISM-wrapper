@@ -744,13 +744,15 @@ Sub-elements of each entry include:
   </entry>
 
   <!-- =============================================================  -->
-  <!-- group: cism.icesheet.config: esm_output                        -->
+  <!-- group: cism_history                                            -->
+  <!-- Not written to any file: buildnml uses these settings to write -->
+  <!-- the [CF output] sections (h0i and h0a) of cism.icesheet.config -->
   <!-- =============================================================  -->
 
   <entry id="esm_history_vars" >
     <type>char</type>
     <category>cism_config_history</category>
-    <group>esm_output</group>
+    <group>cism_history</group>
     <values>
       <!-- Workaround for BFB-restart failure: use instantaneous fields rather than the
            _tavg variants.  The _tavg accumulators (and the per-output-file total_time
@@ -762,10 +764,16 @@ Sub-elements of each entry include:
       <value cism_evolve_this_icesheet=".false.">smb artm thk usurf topg</value>
     </values>
     <desc>
-      Space-delimited list of variables output to history file
+      Space-delimited list of variables output to CISM history files.
+      Fields whose names end in '_tavg' are written to annual time-average (h0a) files;
+      the other fields are written to instantaneous (h0i) files.
       Default: Depends on physics and ice evolution options
     </desc>
   </entry>
+
+  <!-- =============================================================  -->
+  <!-- group: cism.icesheet.config: esm_output                        -->
+  <!-- =============================================================  -->
 
   <entry id="history_option">
     <type>char</type>
