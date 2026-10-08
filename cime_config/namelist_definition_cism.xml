@@ -1000,7 +1000,7 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">0</value>
+      <value icesheet="gris">3</value>
       <value icesheet="ais" >0</value>
     </values>
     <desc>
@@ -1178,7 +1178,7 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1</valid_values>
     <values>
-      <value>1</value>
+      <value>0</value>
     </values>
     <desc>
       0: Do not calve at initialization
@@ -2540,7 +2540,7 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15</valid_values>
     <values>
-      <value icesheet="gris">3</value>
+      <value icesheet="gris">9</value>
       <value icesheet="ais" >9</value>
     </values>
     <desc>
@@ -2588,8 +2588,8 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">0</value>
-      <value icesheet="ais" >0</value>
+      <value icesheet="gris">2</value>
+      <value icesheet="ais" >2</value>
     </values>
     <desc>
       Flag for basal inversion options: invert for Cp = powerlaw_c
