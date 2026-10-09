@@ -1,16 +1,1 @@
-ocean_data_domain = 2
-ocean_data_extrapolate = 1
-nzocn = 30
-dzocn = 60.
-nbasin = 16
-stencil_size = 25
-adjust_input_thickness = .true.
-bmlt_float = 6
-bmlt_float_thermal_forcing_param = 1
-bmlt_float_ismip6_magnitude = 1
-limit_marine_cliffs = .false.
-remove_icebergs = .true.
-remove_isthmuses = .false.
-flow_factor_float = 0.4
-gamma0 = 14433
-force_retreat = 0
+
