@@ -1000,8 +1000,8 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">3</value>
-      <value icesheet="ais" >0</value>
+      <value>0</value>
+      <value icesheet="gris" compset="BLOM|DOCN%MULTILEV" >3</value>
     </values>
     <desc>
       Submarine melt
