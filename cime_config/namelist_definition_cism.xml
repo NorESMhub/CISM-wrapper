@@ -534,7 +534,7 @@ Sub-elements of each entry include:
       <value icesheet="gris" glc_grid="gris20">glc/cism/Greenland/gland20.input_c150415.nc</value>
       <!-- this is the resolution that should be used for science applications with cism2 -->
       <value icesheet="gris" glc_grid="gris4">glc/cism/Greenland/Greenland_4km.init.c27022025_usrf_reff_basins.nc</value>
-
+      <value icesheet="gris" glc_grid="gris4" compset="BLOM|DOCN%MULTILEV">glc/cism/Greenland/n1850GaxgGHG.LM.nor30b25.528.20260928.cism.gris.r.1611-01-01-00000.nc</value>
       <!-- the following is for software testing of Antarctica -->
       <value icesheet="ais" glc_grid="ais8">glc/cism/Antarctica/antarctica_8km_epsg3031_c20250403.nc</value>
     </values>
@@ -1010,8 +1010,8 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">0</value>
-      <value icesheet="ais" >0</value>
+      <value>0</value>
+      <value icesheet="gris" compset="BLOM|DOCN%MULTILEV" >3</value>
     </values>
     <desc>
       Submarine melt
@@ -1188,7 +1188,7 @@ Sub-elements of each entry include:
     <group>options</group>
     <valid_values>0,1</valid_values>
     <values>
-      <value>1</value>
+      <value>0</value>
     </values>
     <desc>
       0: Do not calve at initialization
@@ -2550,7 +2550,7 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15</valid_values>
     <values>
-      <value icesheet="gris">3</value>
+      <value icesheet="gris">9</value>
       <value icesheet="ais" >9</value>
     </values>
     <desc>
@@ -2598,8 +2598,8 @@ Sub-elements of each entry include:
     <group>ho_options</group>
     <valid_values>0,1,2,3</valid_values>
     <values>
-      <value icesheet="gris">0</value>
-      <value icesheet="ais" >0</value>
+      <value>0</value>
+      <value icesheet="gris" compset="BLOM|DOCN%MULTILEV">2</value>
     </values>
     <desc>
       Flag for basal inversion options: invert for Cp = powerlaw_c

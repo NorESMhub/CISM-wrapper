@@ -455,7 +455,8 @@ def _create_cism_config(case, confdir, inst_string, icesheet, glc_grid,
     #----------------------------------------------------
     config = {}
     config['icesheet'] = icesheet
-    config['glc_grid']  = glc_grid
+    config['glc_grid'] = glc_grid
+    config['compset']  = case.get_value("COMPSET")
     config['cism_phys'] = case.get_value("CISM_PHYS")
     if case.get_value('GLC_TWO_WAY_COUPLING'):
         config['glc_two_way_coupling'] = '.true.'
